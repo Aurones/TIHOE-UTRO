@@ -1,5 +1,23 @@
 begin;
 
+create function workshop_private.valid_category_presets(p jsonb) returns boolean
+language plpgsql immutable set search_path='' as $$
+declare k text; sizes jsonb; pair jsonb;
+begin
+ if jsonb_typeof(p) is distinct from 'object' then return false;end if;
+ for k,sizes in select key,value from jsonb_each(p) loop
+   if k not in ('sheet','fitted','duvet','pillow') or jsonb_typeof(sizes) is distinct from 'array' then return false;end if;
+   if jsonb_array_length(sizes) not between 1 and 12 then return false;end if;
+   for pair in select value from jsonb_array_elements(sizes) loop
+     if jsonb_typeof(pair) is distinct from 'array' then return false;end if;
+     if jsonb_array_length(pair)<>2 or jsonb_typeof(pair->0) is distinct from 'number' or jsonb_typeof(pair->1) is distinct from 'number' then return false;end if;
+     if (pair->>0)!~'^[0-9]+$' or (pair->>1)!~'^[0-9]+$' or
+        (pair->>0)::numeric not between 20 and 400 or (pair->>1)::numeric not between 20 and 400 then return false;end if;
+   end loop;
+ end loop;
+ return true;
+end $$;
+
 create table public.categories (
  slug text primary key check(slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$' and length(slug)<=64),
  kind text not null check(kind in ('adult','child','towel')),
@@ -7,6 +25,7 @@ create table public.categories (
  description text not null check(length(trim(description)) between 1 and 350),
  image text not null check(image ~ '^(\./img/category-(bedding|towels|child)\.webp|[0-9a-f-]{36}/[0-9a-f-]{36}\.jpg)$'),
  position integer not null default 100 check(position between 0 and 9999),
+ presets jsonb not null default '{}' check(workshop_private.valid_category_presets(presets)),
  archived boolean not null default false
 );
 insert into public.categories(slug,kind,name,description,image,position) values
@@ -66,13 +85,21 @@ create policy products_owner on public.products to authenticated using(public.ow
 create function public.assortment() returns jsonb language sql stable security definer set search_path='' as $$
  select jsonb_build_object(
  'categories',coalesce((select jsonb_agg(to_jsonb(c) order by c.position,c.name) from public.categories c where not c.archived),'[]'::jsonb),
- 'products',coalesce((select jsonb_agg(to_jsonb(p)-'fabric_id'-'hidden'-'price'||jsonb_build_object(
+ 'products',coalesce((select jsonb_agg((to_jsonb(p)-'fabric_id'-'hidden'-'price'-'colors')||jsonb_build_object(
    'price',case when p.pricing='fixed' then p.price end,
-   'available',p.available and (p.pricing='fixed' or (f.available and not f.hidden and f.stock>0)))
+   'colors',case when p.pricing='fixed' then p.colors else array(select color from unnest(p.colors) color where color=any(f.colors)) end,
+   'available',p.available and (p.pricing='fixed' or (f.available and not f.hidden and f.stock>0 and
+     (f.category_slug is null or f.category_slug=c.slug) and p.colors && f.colors)))
    order by p.name) from public.products p join public.categories c on c.slug=p.category_slug
    left join public.fabrics f on f.id=p.fabric_id where not p.hidden and not c.archived),'[]'::jsonb),
  'fabric_categories',coalesce((select jsonb_object_agg(f.id,f.category_slug) from public.fabrics f where not f.hidden and f.category_slug is not null),'{}'::jsonb)
  )
+$$;
+
+create or replace function public.catalog() returns table(id uuid,name text,material text,composition text,description text,colors text[],width integer,available boolean,photo text)
+language sql stable security definer set search_path='' as $$
+ select f.id,f.name,f.material,f.composition,f.description,f.colors,f.width,f.available and f.stock>0,f.photo
+ from public.fabrics f left join public.categories c on c.slug=f.category_slug where not f.hidden and not coalesce(c.archived,false) order by f.name
 $$;
 
 create function workshop_private.bedding_category(p jsonb,f public.fabrics) returns public.categories

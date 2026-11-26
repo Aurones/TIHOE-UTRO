@@ -71,7 +71,13 @@ const isLegacy=e=>['PGRST202','42883'].includes(e.code);
 async function loadAssortment(){
   if(demo){
     publicCategories=sortCategories(load('qu-demo-categories',categories).filter(c=>!c.archived));
-    publicProducts=load('qu-demo-products',demoProducts).filter(p=>!p.hidden&&publicCategories.some(c=>c.slug===p.category_slug));
+    const materials=initialFabrics();
+    publicProducts=load('qu-demo-products',demoProducts).filter(p=>!p.hidden&&publicCategories.some(c=>c.slug===p.category_slug)).map(p=>{
+      if(p.pricing==='fixed')return p;
+      const fabric=materials.find(f=>f.id===p.fabric_id&&matchesCategory(f,p.category_slug)&&!f.hidden&&f.available&&f.stock>0);
+      const colors=p.colors.filter(color=>fabric?.colors.includes(color));
+      return {...p,colors,available:p.available&&!!colors.length};
+    });
     return {};
   }
   try {
@@ -142,7 +148,8 @@ function categoryCards(list){
   return '<div class="grid category-grid">'+list.map(c=>'<a class="card media category-card" href="'+publicCategoryPath(c.slug,cleanCategoryPaths)+'"><img src="'+esc(imagery(c))+'" alt="" loading="lazy" width="480" height="320"><div class="card-body"><h3>'+esc(c.name)+'</h3><p>'+esc(c.description)+'</p></div></a>').join('')+'</div>';
 }
 function home(){
-  return '<div class="wrap"><section class="hero"><img class="hero-image" src="./img/hero.webp" alt="Постельное бельё шалфейного цвета в мягком утреннем свете" width="1200" height="800" fetchpriority="high"><div class="hero-copy"><p class="eyebrow">Семейная мастерская</p><h1>Уют, сшитый специально для вас</h1><p class="hero-description">Шьём постельное бельё по вашим размерам и из выбранной вами ткани.</p>'+actions(href('#/build','Собрать свой комплект','primary')+href('./catalog/','Посмотреть каталог','quiet'))+'</div></section><section class="section"><div class="section-top"><h2>Каталог мастерской</h2></div>'+categoryCards(publicCategories)+'</section><ul class="features"><li>'+icon('leaf')+'Натуральные ткани</li><li>'+icon('ruler')+'Пошив по вашим размерам</li><li>'+icon('heart')+'Ручная работа</li></ul></div>';
+  const featured=publicCategories.find(c=>c.slug===defaultCategory&&c.kind!=='towel')||publicCategories.find(c=>c.kind!=='towel');
+  return '<div class="wrap"><section class="hero"><img class="hero-image" src="./img/hero.webp" alt="Постельное бельё шалфейного цвета в мягком утреннем свете" width="1200" height="800" fetchpriority="high"><div class="hero-copy"><p class="eyebrow">Семейная мастерская</p><h1>Уют, сшитый специально для вас</h1><p class="hero-description">Шьём постельное бельё по вашим размерам и из выбранной вами ткани.</p>'+actions((featured?href('#/build'+(featured.slug===defaultCategory?'':'/'+featured.slug),featured.kind==='child'?'Собрать детский комплект':'Собрать свой комплект','primary'):'')+href('./catalog/','Посмотреть каталог',featured?'quiet':'primary'))+'</div></section><section class="section"><div class="section-top"><h2>Каталог мастерской</h2></div>'+categoryCards(publicCategories)+'</section><ul class="features"><li>'+icon('leaf')+'Натуральные ткани</li><li>'+icon('ruler')+'Пошив по вашим размерам</li><li>'+icon('heart')+'Ручная работа</li></ul></div>';
 }
 function catalog(){
   return '<section class="wrap page stack"><h1>Каталог</h1>'+categoryCards(publicCategories)+'<h2 id="fabrics">Ткани</h2><form id="filters" class="row three">'+field('Поиск по названию или цвету','q','','','search')+select('Материал','material',['Все материалы',...new Set(fabrics.map(f=>f.material))])+check('Только в наличии','stock')+'</form><div id="catalog-results">'+cards(fabrics,true)+'</div></section>';
@@ -158,7 +165,10 @@ function categoryPage(slug){
   return '<section class="wrap page stack"><div class="category-intro"><img src="'+esc(imagery(c))+'" alt="" width="480" height="320"><div>'+href('./catalog/','Все категории','quiet')+'<h1>'+esc(c.name)+'</h1><p>'+esc(c.description)+'</p>'+(c.kind==='towel'?'':href('#/build/'+encodeURIComponent(c.slug),c.kind==='child'?'Собрать детский комплект':'Собрать свой комплект','primary'))+'</div></div><h2>Товары</h2>'+productCards(publicProducts.filter(p=>p.category_slug===slug))+'<h2>Ткани</h2>'+cards(list,true)+'</section>';
 }
 function applyFilters(form){const {q,material,stock}=Object.fromEntries(new FormData(form));$('#catalog-results').innerHTML=cards(fabrics.filter(f=>(material==='Все материалы'||f.material===material)&&(!stock||f.available)&&[f.name,f.material,...f.colors].join(' ').toLowerCase().includes(q.trim().toLowerCase())),true);}
-const sizesFor=(type,slug)=>categoryBySlug(slug)?.kind==='child'?childSizes[type]:products[type].sizes;
+function sizesFor(type,slug){
+  const category=categoryBySlug(slug);
+  return category?.presets?.[type]||(category?.kind==='child'?childSizes[type]:products[type].sizes);
+}
 const firstItem=(type,slug=draft.category||defaultCategory)=>({type,w:sizesFor(type,slug)[0][0],l:sizesFor(type,slug)[0][1],h:categoryBySlug(slug)?.kind==='child'?12:20,qty:type==='pillow'?2:1,closure:type==='pillow'?'Клапан':type==='duvet'?'Молния':'Без застёжки'});
 function summary(items){
   return '<ul>'+items.map(i=>'<li>'+esc(products[i.type]?.name)+' · '+i.w+' × '+i.l+' см'+(i.type==='fitted'?', высота '+i.h+' см':'')+' · '+i.qty+' шт.'+(['pillow','duvet'].includes(i.type)?' · '+esc(i.closure):'')+'</li>').join('')+'</ul>';
@@ -364,6 +374,7 @@ function categoryForm(c){
  return ownerPage(c.slug?'Редактировать категорию':'Добавить категорию','<form id="category-edit" data-id="'+esc(c.slug)+'" class="panel stack">'+
  field('Название','name',c.name,'required maxlength="90"')+(c.slug?'<p>Адрес категории · '+esc(c.slug)+'</p>':field('Часть адреса латиницей','slug','','required maxlength="64" pattern="[a-z0-9]+(-[a-z0-9]+)*"'))+
  '<label>Тип конструктора<select name="kind">'+options+'</select></label>'+area('Описание','description',c.description,350)+nField('Порядок показа','position',c.position??100,0,9999)+
+ '<details class="stack"><summary>Стандартные размеры для пошива белья</summary><p class="muted">По одному размеру на строку, например 60 × 120. Пустое поле сохраняет стандартные варианты конструктора.</p>'+types.map(type=>area(products[type].name,'preset_'+type,c.presets?.[type]?.map(pair=>pair.join(' × ')).join('\n'),300)).join('')+'</details>'+
  (c.image?'<img src="'+esc(imagery(c))+'" alt="Текущая фотография" width="160">':'')+fileField+check('Архивировать категорию','archived',c.archived)+error+'<button class="primary">Сохранить категорию</button></form>');
 }
 function productForm(p){
@@ -391,7 +402,13 @@ async function saveCategory(form){
  const slug=old?.slug||v.slug;
  if(!v.name.trim()||!v.description.trim())throw new Error('Введите название и описание категории.');
  if(!old&&ownerCategories.some(c=>c.slug===slug))throw new Error('Этот адрес уже используется.');
- const c={slug,name:v.name.trim(),kind:v.kind,description:v.description.trim(),position:Number(v.position),archived:!!v.archived,
+ const presets={};
+ for(const type of types){
+   const values=parseSizes(v['preset_'+type]);
+   if(values.some(size=>!sizePattern.test(size)||size.includes(';')||size.match(/\d+/g).some(n=>n<20||n>400))||values.length>12)throw new Error('Для каждого изделия укажите до 12 размеров от 20 до 400 см.');
+   if(values.length)presets[type]=values.map(size=>size.split(' × ').map(Number));
+ }
+ const c={slug,presets,name:v.name.trim(),kind:v.kind,description:v.description.trim(),position:Number(v.position),archived:!!v.archived,
    image:await inventoryPhoto(v.upload,old?.image,categories.find(c=>c.kind===v.kind).image)};
  if(demo)write('qu-demo-categories',[c,...ownerCategories.filter(x=>x.slug!==slug)]);
  else await table('categories',old?'?slug=eq.'+encodeURIComponent(slug):'',old?'PATCH':'POST',c);
@@ -409,6 +426,7 @@ async function saveProduct(form){
  const f=dataFabrics.find(f=>f.id===v.fabric_id);
  const sizes=parseSizes(v.sizes), colors=[...new Set(v.colors.split(',').map(s=>s.trim()).filter(Boolean))];
  if(!c||!v.name.trim()||!v.material.trim()||!colors.length||colors.some(c=>c.length>80)||!sizes.length||sizes.length>30||colors.length>30||sizes.some(s=>!sizePattern.test(s)||s.match(/\d+/g).some(n=>n<20||n>400)))throw new Error('Проверьте категорию, расцветки и размеры от 20 до 400 см.');
+ if(!demo&&!old?.image&&!v.upload?.size)throw new Error('Добавьте фотографию товара.');
  if(pricing==='fixed'&&price<=0)throw new Error('Укажите фиксированную цену.');
  if(pricing==='custom'&&(!f||!matchesCategory(f,c.slug)||colors.some(color=>!f.colors.includes(color))))throw new Error('Выберите ткань этой категории и укажите доступные для неё расцветки.');
  const p={id:old?.id||crypto.randomUUID(),category_slug:c.slug,name:v.name.trim(),description:v.description,material:v.material.trim(),colors,sizes,pricing,price,
@@ -424,8 +442,12 @@ function fabricForm(f){
 const ruleFields={seam:['Припуск на сторону, см',0,20],shrink:['Усадка, %',0,30],elastic:['Резинка на изделие, ₽',0,100000],zipper:['Молния на изделие, ₽',0,100000],packaging:['Упаковка, ₽',0,100000],extra:['Дополнительные расходы, ₽',0,100000],markup:['Наценка, %',0,500],discount:['Скидка, %',0,100]};
 function rulesForm(){return ownerPage('Настройки расчёта','<form id="rules" class="panel stack"><p>Тестовая формула. Подтвердите нормы раскроя и цены мастерской.</p><div class="row">'+Object.entries(ruleFields).map(([k,[name,min,max]])=>nField(name,k,rules[k],min,max,0.1)).join('')+types.map(k=>nField('Пошив: '+products[k].name+', ₽','labor_'+k,rules.labor[k],0,100000)).join('')+'</div>'+error+'<button class="primary">Сохранить настройки</button></form>');}
 function clientsPage(orders){
+ return ownerPage('Клиенты','<form id="client-filters">'+categoryPicker(orderCategories(orders),'','Все категории')+'</form><div id="client-results" class="stack"></div>');
+}
+function fillClients(orders,category){
+ orders=orders.filter(o=>!category||(o.category_slug||defaultCategory)===category);
  const groups=Object.groupBy?Object.groupBy(orders,o=>o.contact.trim().toLowerCase()):orders.reduce((a,o)=>{(a[o.contact.trim().toLowerCase()]??=[]).push(o);return a;},Object.create(null));
- return ownerPage('Клиенты',Object.values(groups).map(group=>'<details class="panel"><summary>'+esc(group[0].customer)+' · '+group.length+' заказов</summary><p>'+esc(group[0].contact)+'</p>'+group.map(o=>orderContents(o)+href('#/owner/order/'+o.id,'Открыть '+orderLabel(o))+(o.notes?'<p>'+esc(o.notes)+'</p>':'')).join('')+'</details>').join('')||'<p>Клиенты появятся после оформления первого заказа.</p>');
+ $('#client-results').innerHTML=Object.values(groups).map(group=>'<details class="panel"><summary>'+esc(group[0].customer)+' · '+group.length+' заказов</summary><p>'+esc(group[0].contact)+'</p>'+group.map(o=>orderContents(o)+href('#/owner/order/'+o.id,'Открыть '+orderLabel(o))+(o.notes?'<p>'+esc(o.notes)+'</p>':'')).join('')+'</details>').join('')||'<p>Клиенты появятся после оформления первого заказа.</p>';
 }
 const periods={'Сегодня':1,'Неделя':7,'Месяц':30,'Год':365};
 function statsCalc(orders,period,category=''){
@@ -546,7 +568,7 @@ async function render(focus=true){
  try{
    if(!area||['fabrics','category','product','build','orders'].includes(area)){
      const [assignments,materials]=await Promise.all([loadAssortment(),demo?initialFabrics().filter(f=>!f.hidden):rpc('catalog')]);
-     fabrics=materials.map(f=>({...f,category_slug:assignments?.[f.id]||f.category_slug}));
+     fabrics=materials.map(f=>({...f,category_slug:assignments?.[f.id]||f.category_slug})).filter(f=>!f.category_slug||publicCategories.some(c=>c.slug===f.category_slug));
      if(demo)rules=load('qu-demo-rules',defaultRules);
    }
    if(!current())return;
@@ -589,6 +611,7 @@ async function render(focus=true){
    if(!current())return;
    main.innerHTML=html||panel('Страница не найдена',href('./','На главную'));
    if(focus)main.focus({preventScroll:true});
+   if($('#client-results'))fillClients(dataOrders,'');
    if($('#owner-orders'))fillOwnerOrders($('#order-filters'),dataOrders);
    if($('#stats-result'))statsFill(dataOrders,$('#stats [name=period]').value);
    if($('#product-order'))syncProductSize($('#product-order'));
@@ -605,6 +628,7 @@ document.addEventListener('input',e=>{
  if(!form)return;
  if(form.id==='filters')applyFilters(form);
  if(form.id==='order-filters')fillOwnerOrders(form,dataOrders);
+ if(form.id==='client-filters')fillClients(dataOrders,e.target.value);
  if(form.id==='stats')statsFill(dataOrders,$('#stats [name=period]').value);
  if(form.id==='product-order'&&['size','w','l','color','qty','comment'].includes(e.target.name)){
    const v=Object.fromEntries(new FormData(form));
@@ -663,7 +687,7 @@ document.addEventListener('submit',async e=>{
  const form=e.target;
  if(!form.id)return;
  e.preventDefault();
- if(['filters','order-filters','stats'].includes(form.id))return;
+ if(['filters','order-filters','client-filters','stats'].includes(form.id))return;
  const button=e.submitter;
  if(button)button.disabled=true;
  try{

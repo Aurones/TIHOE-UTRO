@@ -26,7 +26,7 @@ try {
   await assertTextSize('normal');
   await page.setViewportSize({width:390,height:844});
   await click('link','Посмотреть каталог');
-  await page.getByLabel('Поиск по названию или цвету').fill('шалфей');
+  await page.getByLabel('Поиск по названию или цвету').fill('Сатин «Шалфей»');
   assert.equal(await page.locator('#catalog-results article').count(),1);
   await click('button','Увеличить фото Сатин «Шалфей»');
   await page.getByRole('dialog').waitFor();
@@ -224,6 +224,8 @@ async function checkAssortment(){
   await page.getByLabel('Часть адреса латиницей').fill('kuhnya');
   await page.getByLabel('Описание',{exact:true}).fill('Тестовая категория для кухни.');
   await page.getByLabel('Порядок показа').fill('1');
+  await page.getByText('Стандартные размеры для пошива белья',{exact:true}).click();
+  await page.getByLabel('Простыня',{exact:true}).fill('70 × 130');
   await click('button','Сохранить категорию');
   await heading('Мой ассортимент');
   await click('link','Добавить товар');
