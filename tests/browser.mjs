@@ -60,7 +60,7 @@ try {
   await click('button','Открыть демонстрационный кабинет');
   await click('link','Открыть раздел «Заказы»');
   await click('link','Открыть заказ');
-  await page.getByLabel('Статус',{exact:true}).selectOption('Цена согласована');
+  await page.locator('#owner-order select[name=status]').selectOption('Цена согласована');
   await page.getByLabel('Согласованная цена, ₽').fill('4200');
   await page.getByLabel('Получено оплат, ₽').fill('1500');
   await click('button','Сохранить заказ');
@@ -75,4 +75,10 @@ try {
   await context.setOffline(false);
   assert.deepEqual(errors,[]);
   console.log('Playwright Chromium: главная на шести ширинах, фотографии, каталог, конструктор, сохранение, заказ, кабинет, статистика и офлайн PWA.');
+}catch(error){
+  await page.screenshot({path:'artifacts/failure.png',fullPage:true}).catch(()=>{});
+  console.error('Страница сбоя:',page.url(),await page.locator('h1').allTextContents());
+  const reported=await page.locator('.error:visible').allTextContents();
+  if(reported.length)console.error('Сообщения интерфейса:',reported);
+  throw error;
 }finally{await browser.close();}
