@@ -5,6 +5,7 @@ on:
     paths:
       - 'supabase/**'
       - 'tests/backend.mjs'
+      - 'tests/browser-live.mjs'
       - '.github/workflows/backend.yml'
   workflow_dispatch:
 permissions:
@@ -24,7 +25,8 @@ jobs:
       - name: Start a disposable Supabase instance
         run: |
           supabase init
-          sed -i 's/^project_id = .*/project_id = "tihoe-utro"/; s/^enable_anonymous_sign_ins = .*/enable_anonymous_sign_ins = false/; s/^enable_signup = .*/enable_signup = false/' supabase/config.toml
+          sed -i 's/^project_id = .*/project_id = "tihoe-utro"/; s/^enable_anonymous_sign_ins = .*/enable_anonymous_sign_ins = false/' supabase/config.toml
+          sed -i '0,/^enable_signup = true/s//enable_signup = false/' supabase/config.toml
           if ! supabase start >/tmp/tihoe-supabase-start.log 2>&1; then
             grep -E '^Error|^ERROR|^Stopping|SQLSTATE|[Ff]ailed' /tmp/tihoe-supabase-start.log || true
             exit 1
@@ -34,4 +36,8 @@ jobs:
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
           printf '%s' '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAoHBwgHBgoICAgLCgoLDhgQDg0NDh0VFhEYIx8lJCIfIiEmKzcvJik0KSEiMEExNDk7Pj4+JS5ESUM8SDc9Pjv/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAAB//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AZn//2Q==' | base64 -d >/tmp/tihoe-utro-test.jpg
-          node tests/backend.mjs
+          TIHOE_LIVE_BROWSER_FIXTURE=1 node tests/backend.mjs
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Verify the same publication in separate browser sessions
+        run: node tests/browser-live.mjs

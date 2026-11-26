@@ -19,6 +19,7 @@ if(config.mode==='live'){
   if(!settings.ok)throw Error('Cannot verify Auth settings: '+settings.status);
   const auth=await settings.json();
   if(auth.disable_signup!==true||auth.external?.anonymous_users!==false)throw Error('Disable all public sign-ups and anonymous sign-ins before enabling live mode');
+  if(auth.external?.email!==true)throw Error('Keep password sign-in enabled for the owner');
   const snapshot=await fetch(config.url.replace(/\/$/,'')+'/rest/v1/rpc/storefront_snapshot',{
     method:'POST',headers:{apikey:config.key,'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(12000)
   });

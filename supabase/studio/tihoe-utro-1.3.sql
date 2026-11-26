@@ -301,6 +301,11 @@ revoke all on function public.storefront_is_owner(),public.storefront_snapshot()
 grant execute on function public.storefront_is_owner(),public.storefront_snapshot(),public.storefront_media_visible(text),public.storefront_quote(jsonb) to anon,authenticated;
 grant execute on function public.storefront_draft(),public.save_storefront_draft(integer,jsonb),public.publish_storefront(integer) to authenticated;
 
+drop policy if exists owner_fabric_files on storage.objects;
+drop policy if exists chat_read_files on storage.objects;
+drop policy if exists chat_create_files on storage.objects;
+drop policy if exists chat_delete_files on storage.objects;
+
 -- Закрываем старые интерфейсы базы, если на этом проекте ранее применялись миграции 1.0–1.2.
 -- Строки и файлы остаются доступны администратору в Studio.
 do $$

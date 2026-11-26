@@ -182,7 +182,7 @@ function sizesFor(type,slug){
 }
 const firstItem=(type,slug=draft.category||defaultCategory)=>({type,w:sizesFor(type,slug)[0][0],l:sizesFor(type,slug)[0][1],h:categoryBySlug(slug)?.kind==='child'?12:20,qty:type==='pillow'?2:1,closure:type==='pillow'?'Клапан':type==='duvet'?'Молния':'Без застёжки'});
 function summary(items){
-  return '<ul>'+items.map(i=>'<li>'+esc(products[i.type]?.name)+' · '+i.w+' × '+i.l+' см'+(i.type==='fitted'?', высота '+i.h+' см':'')+' · '+i.qty+' шт.'+(['pillow','duvet'].includes(i.type)?' · '+esc(i.closure):'')+'</li>').join('')+'</ul>';
+  return '<ul>'+items.map(i=>'<li>'+esc(itemDescription(i))+'</li>').join('')+'</ul>';
 }
 function dimensions(i,slug=draft.category||defaultCategory){
   return '<fieldset class="stack" data-item="'+i.type+'"><legend>'+products[i.type].name+'</legend>'+select('Стандартный размер','preset',['Свои размеры',...sizesFor(i.type,slug).map(([w,l])=>w+' × '+l)],i.w+' × '+i.l)+'<div class="row">'+nField('Ширина, см','w',i.w,20,400)+nField('Длина, см','l',i.l,20,400)+(i.type==='fitted'?nField('Высота матраса, см','h',i.h,5,60):'')+nField('Количество, шт.','qty',i.qty,1,12)+(['duvet','pillow'].includes(i.type)?select('Застёжка','closure',i.type==='pillow'?['Клапан','Молния']:['Молния','Без застёжки'],i.closure):'')+'</div></fieldset>';
@@ -239,7 +239,7 @@ function contactsActions(withCart=false){
  const urls=contactUrls(content.contact);
  const message=withCart?cartMessage():'';
  return actions(
-   (urls.telegram?'<a class="button" href="'+esc(urls.telegram+(message?'?text='+encodeURIComponent(message):''))+'" rel="noopener noreferrer" target="_blank">Telegram</a>':'')+
+   (urls.telegram?(message.length>3500?'<button type="button" data-telegram>Скопировать и открыть Telegram</button>':'<a class="button" href="'+esc(urls.telegram+(message?'?text='+encodeURIComponent(message):''))+'" rel="noopener noreferrer" target="_blank">Telegram</a>'):'')+
    (urls.vk?(withCart?'<button type="button" data-vk>Скопировать и открыть ВКонтакте</button>':'<a class="button" href="'+esc(urls.vk)+'" rel="noopener noreferrer" target="_blank">ВКонтакте</a>'):'')+
    (urls.phone?'<a class="button quiet" href="'+esc(urls.phone)+'">Позвонить</a>':'')
  )+(!Object.values(urls).some(Boolean)?'<p class="muted">'+(demo?'В демоверсии контакты не указаны. Текст подборки можно скопировать.':'Мастерская пока не опубликовала контакты.')+'</p>':'');
@@ -252,7 +252,7 @@ function cartPage(){
   '<div class="panel stack">'+(allKnown?'<p>Предварительная стоимость <strong>'+rub(cart.reduce((sum,row)=>sum+row.price,0))+'</strong></p>':'<p>Окончательную стоимость уточнит мастер.</p>')+
   select('Способ получения','delivery',deliveryMethods,delivery)+(content.contact.delivery?'<p>'+esc(content.contact.delivery)+'</p>':'')+
   '<label>Текст для отправки<textarea id="cart-message" readonly rows="7">'+esc(cartMessage())+'</textarea></label>'+
-  '<button type="button" class="primary" data-copy>Скопировать текст</button>'+contactsActions(true)+'</div></div>');
+  '<button type="button" class="primary" data-copy>Скопировать текст</button>'+'<div id="cart-contacts">'+contactsActions(true)+'</div></div></div>');
 }
 function contactPage(){
  return panel('Связаться','<div class="panel stack">'+(content.contact.description?'<p>'+esc(content.contact.description)+'</p>':'')+contactsActions()+
@@ -310,11 +310,11 @@ function dashboard(){
   '<div class="owner-sections">'+ownerSections.map(([path,name,description,glyph])=>'<a class="card owner-tile" href="#/owner/'+path+'" aria-label="Открыть раздел «'+name+'»">'+icon(glyph)+'<div><h2>'+name+'</h2><p>'+description+'</p></div></a>').join('')+'</div>');
 }
 function previewPage(slug){
- const dest=slug?categoryPage(slug):home();
- const navigation=actions(href('#/owner/preview','Главная','quiet')+
+ const dest=slug==='~contacts'?contactPage():slug==='~catalog'?catalog():slug?categoryPage(slug):home();
+ const navigation=actions(href('#/owner/preview','Главная','quiet')+href('#/owner/preview/~catalog','Каталог','quiet')+href('#/owner/preview/~contacts','Связаться','quiet')+
   publicCategories.map(c=>href('#/owner/preview/'+c.slug,esc(c.name),'quiet')).join(''));
  return ownerPage('Предварительный просмотр','<p>Виден сохранённый черновик.</p>'+navigation+
-  '<div inert class="draft-preview">'+dest+'</div>');
+  '<div inert class="draft-preview"><img class="preview-logo" src="'+esc(photoSource(content.home.logo,defaults.home.logo))+'" alt="Логотип витрины">'+dest+'</div>');
 }
 function homeEditor(){
  const h=editor.draft.home;
@@ -632,11 +632,11 @@ document.addEventListener('change',e=>{
    applyTextSize(e.target.value);
    try{write(textSizeKey,e.target.value);}catch{}
  }
- if(e.target.name==='delivery'){
+ if(e.target.name==='delivery'&&e.target instanceof HTMLSelectElement){
    delivery=e.target.value;write(deliveryKey,delivery);
    $('#cart-message').value=cartMessage();
-   const telegram=$('#content a[href^="https://t.me/"]');
-   if(telegram)telegram.href=contactUrls(content.contact).telegram+'?text='+encodeURIComponent(cartMessage());
+   const linksPanel=$('#cart-contacts');
+   if(linksPanel)linksPanel.innerHTML=contactsActions(true);
  }
  if(e.target.form?.id==='product-edit'&&e.target.name==='pricing')$('#custom-pricing').hidden=e.target.selectedIndex===0;
  if(e.target.name==='preset'&&e.target.value!=='Свои размеры'){
@@ -664,6 +664,7 @@ document.addEventListener('click',async e=>{
    if(b.dataset.remove){saveCart(cart.filter(row=>row.id!==b.dataset.remove));$('#content').innerHTML=cartPage();$('#content').focus();}
    if('copy' in b.dataset)await copyMessage();
    if('vk' in b.dataset&&await copyMessage())location.assign(contactUrls(content.contact).vk);
+   if('telegram' in b.dataset&&await copyMessage())location.assign(contactUrls(content.contact).telegram);
  }catch(e){notice(e.message);}
 });
 document.addEventListener('submit',async e=>{

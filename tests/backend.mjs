@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
-import {readFile} from 'node:fs/promises';
+import {readFile,writeFile} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 
 const {API_URL,ANON_KEY,SERVICE_ROLE_KEY}=process.env;
@@ -25,7 +25,7 @@ async function account(){
   await request('/auth/v1/admin/users',{method:'POST',key:SERVICE_ROLE_KEY,token:SERVICE_ROLE_KEY,expected:[200,201],
     data:{email,password,email_confirm:true}});
   const login=await request('/auth/v1/token?grant_type=password',{method:'POST',data:{email,password}});
-  return {email,token:login.access_token};
+  return {email,password,token:login.access_token};
 }
 const [owner,other]=await Promise.all([account(),account()]);
 const sql=(await readFile('supabase/studio/tihoe-utro-1.3.sql','utf8')).replace('replace-owner@example.invalid',owner.email);
@@ -93,3 +93,7 @@ assert.equal(await rpc('storefront_quote',{p}),initialPrice);
 await rpc('publish_storefront',{expected:edit.revision},owner.token);
 assert.ok(await rpc('storefront_quote',{p})>initialPrice);
 console.log('Auth registration disabled, owner-only writes, draft and photo isolation, revision conflicts, publication and quotes checked.');
+
+if(process.env.TIHOE_LIVE_BROWSER_FIXTURE==='1'){
+ await writeFile('/tmp/tihoe-live-browser.json',JSON.stringify({email:owner.email,password:owner.password,url:API_URL,key:ANON_KEY}),{mode:0o600});
+}

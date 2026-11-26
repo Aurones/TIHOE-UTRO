@@ -13,7 +13,7 @@ async function build({live=false,dataAvailable=false,signupDisabled=true}={}){
   await writeFile(join(temp,'public/config.js'),"export const config="+JSON.stringify(live?{mode:'live',url:'https://example.invalid',key:'test-public-key'}:{mode:'demo',url:'https://example.invalid',key:'test-public-key'}));
   await writeFile(join(temp,'public/seo.js'),"export const seo="+JSON.stringify({site,indexing:true,googleVerification:'google-test',yandexVerification:'yandex-test'}));
   const data={content:{categories:[fixture],products:dataAvailable?[{pricing:'custom',available:true}]:[],fabrics:[]}};
-  const auth={disable_signup:signupDisabled,external:{anonymous_users:false}};
+  const auth={disable_signup:signupDisabled,external:{anonymous_users:false,email:true}};
   const code='globalThis.fetch=async url=>Response.json(url.endsWith("/settings")?'+JSON.stringify(auth)+':'+JSON.stringify(data)+');await import('+
     JSON.stringify(pathToFileURL(join(temp,'scripts/build.mjs')).href)+');';
   return spawnSync(process.execPath,['--input-type=module','-e',code],{cwd:temp,encoding:'utf8'});
