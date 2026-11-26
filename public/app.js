@@ -23,7 +23,16 @@ const statuses=['Новый заказ','Уточнение деталей','Ц�
 const types=Object.keys(products);
 const blank=()=>({step:1,fabric:'',color:'',items:[],comment:'',nonce:crypto.randomUUID()});
 let draft=load(demo?'qu-demo-draft':'qu-live-draft',null)||blank();
+const checkoutKey=demo?'qu-demo-checkout':'qu-live-checkout';
 let checkout={};
+try{checkout=JSON.parse(sessionStorage.getItem(checkoutKey))||{};}catch{}
+function saveCheckout(values){
+ checkout=values;
+ try{
+   if(Object.keys(values).length)sessionStorage.setItem(checkoutKey,JSON.stringify(values));
+   else sessionStorage.removeItem(checkoutKey);
+ }catch{}
+}
 let fabrics=[],rules=defaultRules,owner=false,route='',epoch=0,timer,chatStop;
 const draftKey=demo?'qu-demo-draft':'qu-live-draft';
 const saveDraft=()=>write(draftKey,draft);
@@ -93,7 +102,7 @@ function syncBuilder(form){
     return {...firstItem(type),...Object.fromEntries([...one.querySelectorAll('[name]:not([name=preset])')].map(el=>[el.name,el.type==='number'?Number(el.value):el.value]))};
   });
   if(draft.step===4)draft.comment=data.comment;
-  if(draft.step===5)checkout=data;
+  if(draft.step===5)saveCheckout(data);
   saveDraft();
 }
 const demoOrders=()=>load('qu-demo-orders',[]);
@@ -101,7 +110,7 @@ async function getOrders(){return demo?demoOrders():rpc('my_orders');}
 const orderLabel=o=>'Заказ № '+o.id.slice(0,8).toUpperCase();
 function statusLabel(o){return '<span class="tag">'+esc(o.status)+'</span>';}
 function ordersPage(orders){
-  return panel('Мои заказы','<div class="stack">'+(demo?'<p>Здесь отображаются тестовые заказы из этого браузера.</p>':'<p>Заказы доступны в браузере, в котором вы их оформили.</p>')+(orders.length?orders.map(o=>'<article class="card stack"><h2>'+orderLabel(o)+'</h2><p>'+statusLabel(o)+'</p><p>'+esc(o.fabric_name)+' · '+date(o.created_at)+'</p>'+summary(o.items||[])+(o.final_price!=null?'<p>Согласованная цена: '+rub(o.final_price)+'</p>':'')+(o.due?'<p>Срок готовности: '+esc(o.due)+'</p>':'')+actions(href('#/chat/'+o.id,'Открыть чат')+'<button data-repeat="'+o.id+'">Повторить заказ</button>')+'</article>').join(''):'<p>У вас пока нет заказов.</p>'+href('#/build','Собрать свой комплект','primary'))+'</div>');
+  return panel('Мои заказы','<div class="stack">'+(demo?'<p>Здесь отображаются тестовые заказы из этого браузера.</p>':'<p>Заказы доступны в браузере, в котором вы их оформили.</p>')+(orders.length?orders.map(o=>'<article class="card stack"><h2>'+orderLabel(o)+'</h2><p>'+statusLabel(o)+'</p><p>'+esc(o.fabric_name)+' · '+date(o.created_at)+'</p>'+summary(o.items||[])+(o.final_price!=null?'<p>Согласованная цена: '+rub(o.final_price)+'</p>':o.estimate!=null?'<p>Предварительная стоимость: '+rub(o.estimate)+'</p>':'')+(o.due?'<p>Срок готовности: '+esc(o.due)+'</p>':'')+actions(href('#/chat/'+o.id,'Открыть чат')+'<button data-repeat="'+o.id+'">Повторить заказ</button>')+'</article>').join(''):'<p>У вас пока нет заказов.</p>'+href('#/build','Собрать свой комплект','primary'))+'</div>');
 }
 function infoPage(kind){
   if(kind==='install')return panel('Установить приложение','<div class="panel stack"><h2>На Android</h2><p>Откройте сайт в Chrome. Нажмите меню ⋮ и выберите «Установить приложение» или «Добавить на главный экран».</p><h2>На iPhone</h2><p>Откройте сайт в Safari. Нажмите «Поделиться», затем «На экран Домой» и «Добавить».</p><p>Каталог и отправка заказов в рабочем режиме требуют интернета.</p></div>');
@@ -119,7 +128,7 @@ async function submitOrder(form){
     const samples=demoOrders();
     if(!samples.some(o=>o.nonce===payload.nonce))write('qu-demo-orders',[{...payload,id:crypto.randomUUID(),created_at:new Date().toISOString(),fabric_name:f.name,status:statuses[0],estimate:price,paid:0,history:[]},...samples]);
   }else await rpc('place_order',{p:payload},true);
-  checkout={};draft=blank();saveDraft();notice(demo?'Тестовый заказ сохранён в этом браузере.':'Заказ принят. Статус доступен в разделе «Мои заказы».');go('#/orders');
+  saveCheckout({});draft=blank();saveDraft();notice(demo?'Тестовый заказ сохранён в этом браузере.':'Заказ принят. Статус доступен в разделе «Мои заказы».');go('#/orders');
 }
 const ownerNav=()=>actions(href('#/owner','Обзор')+href('#/owner/orders','Заказы')+href('#/owner/fabrics','Мои ткани')+href('#/owner/messages','Сообщения')+href('#/owner/stats','Статистика')+'<button data-logout>Выйти</button>');
 const ownerPage=(title,body)=>'<section class="wrap page stack">'+ownerNav()+'<h1>'+title+'</h1>'+body+'</section>';

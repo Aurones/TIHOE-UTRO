@@ -48,6 +48,8 @@ try {
   await heading('Проверка и оформление');
   await page.getByLabel('Имя',{exact:true}).fill('Тестовый покупатель');
   await page.getByLabel('Телефон или другой способ связи').fill('test@example.invalid');
+  await page.reload();
+  assert.equal(await page.getByLabel('Телефон или другой способ связи').inputValue(),'test@example.invalid');
   await page.getByLabel('Согласен на обработку данных для оформления заказа').check();
   await click('button','Создать тестовый заказ');
   await heading('Мои заказы');

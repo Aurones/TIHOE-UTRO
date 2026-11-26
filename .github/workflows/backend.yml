@@ -25,7 +25,10 @@ jobs:
         run: |
           supabase init
           sed -i 's/^project_id = .*/project_id = "tihoe-utro"/; s/^enable_anonymous_sign_ins = .*/enable_anonymous_sign_ins = true/' supabase/config.toml
-          supabase start
+          if ! supabase start >/tmp/tihoe-supabase-start.log 2>&1; then
+            grep -E '^Error|^ERROR|^Stopping|SQLSTATE|[Ff]ailed' /tmp/tihoe-supabase-start.log || true
+            exit 1
+          fi
       - name: Verify authentication, row policies and storage
         run: |
           eval "$(supabase status -o env)"
