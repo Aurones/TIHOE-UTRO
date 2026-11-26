@@ -11,21 +11,25 @@ const abs=path=>new URL(path,site).href;
 let categories=samples;
 let indexing=false;
 
-if(config.url&&config.key&&seo.indexing){
-  async function rpc(name){
-    const response=await fetch(config.url.replace(/\/$/,'')+'/rest/v1/rpc/'+name,{
-      method:'POST',headers:{apikey:config.key,'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(15000)
-    });
-    if(!response.ok)throw Error('Cannot verify live assortment: '+response.status);
-    return response.json();
-  }
-  const [assortment,fabrics]=await Promise.all([rpc('assortment'),rpc('catalog')]);
-  categories=assortment.categories;
-  if(!categories.length||(!assortment.products.some(p=>p.available)&&
-    !fabrics.some(f=>f.available&&categories.some(c=>c.kind!=='towel'&&(!assortment.fabric_categories[f.id]||assortment.fabric_categories[f.id]===c.slug))))){
+if(config.mode==='live'){
+  if(!config.url||!config.key)throw Error('Live mode requires a public project URL and publishable key');
+  const settings=await fetch(config.url.replace(/\/$/,'')+'/auth/v1/settings',{
+    headers:{apikey:config.key},signal:AbortSignal.timeout(12000)
+  });
+  if(!settings.ok)throw Error('Cannot verify Auth settings: '+settings.status);
+  const auth=await settings.json();
+  if(auth.disable_signup!==true||auth.external?.anonymous_users!==false)throw Error('Disable all public sign-ups and anonymous sign-ins before enabling live mode');
+  const snapshot=await fetch(config.url.replace(/\/$/,'')+'/rest/v1/rpc/storefront_snapshot',{
+    method:'POST',headers:{apikey:config.key,'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(12000)
+  });
+  if(!snapshot.ok)throw Error('Cannot read the storefront snapshot: '+snapshot.status);
+  const {content}=await snapshot.json();
+  categories=content.categories;
+  if(seo.indexing&&(!categories.length||(!content.products.some(p=>p.pricing==='custom'&&p.available)&&
+     !content.fabrics.some(f=>f.available&&categories.some(c=>c.kind!=='towel'&&(!f.category_slug||f.category_slug===c.slug)))))){
     throw Error('Indexing requires an active public assortment');
   }
-  indexing=true;
+  indexing=seo.indexing;
 }
 for(const c of categories)if(!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(c.slug))throw Error('Invalid category URL');
 
@@ -44,7 +48,7 @@ const escapedPaths=esc(JSON.stringify(categories.map(c=>c.slug)));
 const verification=[
  ['google-site-verification',seo.googleVerification],['yandex-verification',seo.yandexVerification]
 ].filter(([,value])=>value).map(([name,value])=>'<meta name="'+name+'" content="'+esc(value)+'">').join('\n');
-const photo=path=>path.startsWith('./img/')?abs(path):config.url.replace(/\/$/,'')+'/storage/v1/object/public/fabrics/'+path;
+const photo=path=>abs(path.startsWith('./img/')?path:'./img/hero.webp');
 
 for(const p of pageRoutes){
   const canonical=abs(p.path);

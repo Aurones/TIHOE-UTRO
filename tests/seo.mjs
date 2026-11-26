@@ -9,11 +9,12 @@ const source=process.cwd();
 const temp=await mkdtemp(join(tmpdir(),'tihoe-seo-'));
 const site='https://aurones.github.io/TIHOE-UTRO/';
 const fixture={slug:'novaya-kategoriya',kind:'towel',name:'Полотенца & наборы',description:'Публичное описание категории.',image:'./img/category-towels.webp'};
-async function build({live=false,dataAvailable=false}={}){
-  await writeFile(join(temp,'public/config.js'),"export const config="+JSON.stringify(live?{url:'https://example.invalid',key:'test-public-key'}:{url:'',key:''}));
+async function build({live=false,dataAvailable=false,signupDisabled=true}={}){
+  await writeFile(join(temp,'public/config.js'),"export const config="+JSON.stringify(live?{mode:'live',url:'https://example.invalid',key:'test-public-key'}:{mode:'demo',url:'https://example.invalid',key:'test-public-key'}));
   await writeFile(join(temp,'public/seo.js'),"export const seo="+JSON.stringify({site,indexing:true,googleVerification:'google-test',yandexVerification:'yandex-test'}));
-  const data={categories:[fixture],products:dataAvailable?[{available:true}]:[],fabric_categories:{}};
-  const code='globalThis.fetch=async url=>Response.json(url.endsWith("/assortment")?'+JSON.stringify(data)+':[]);await import('+
+  const data={content:{categories:[fixture],products:dataAvailable?[{pricing:'custom',available:true}]:[],fabrics:[]}};
+  const auth={disable_signup:signupDisabled,external:{anonymous_users:false}};
+  const code='globalThis.fetch=async url=>Response.json(url.endsWith("/settings")?'+JSON.stringify(auth)+':'+JSON.stringify(data)+');await import('+
     JSON.stringify(pathToFileURL(join(temp,'scripts/build.mjs')).href)+');';
   return spawnSync(process.execPath,['--input-type=module','-e',code],{cwd:temp,encoding:'utf8'});
 }
@@ -25,6 +26,10 @@ try {
   assert.match(await read('index.html'),/noindex,nofollow/);
   assert.match(await read('robots.txt'),/Disallow: \/\n/);
   assert.doesNotMatch(await read('sitemap.xml'),/<url>/);
+
+  const open=await build({live:true,dataAvailable:true,signupDisabled:false});
+  assert.notEqual(open.status,0);
+  assert.match(open.stderr,/Disable all public sign-ups/);
 
   const missing=await build({live:true});
   assert.notEqual(missing.status,0);

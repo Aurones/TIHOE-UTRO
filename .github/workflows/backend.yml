@@ -24,12 +24,12 @@ jobs:
       - name: Start a disposable Supabase instance
         run: |
           supabase init
-          sed -i 's/^project_id = .*/project_id = "tihoe-utro"/; s/^enable_anonymous_sign_ins = .*/enable_anonymous_sign_ins = true/' supabase/config.toml
+          sed -i 's/^project_id = .*/project_id = "tihoe-utro"/; s/^enable_anonymous_sign_ins = .*/enable_anonymous_sign_ins = false/; s/^enable_signup = .*/enable_signup = false/' supabase/config.toml
           if ! supabase start >/tmp/tihoe-supabase-start.log 2>&1; then
             grep -E '^Error|^ERROR|^Stopping|SQLSTATE|[Ff]ailed' /tmp/tihoe-supabase-start.log || true
             exit 1
           fi
-      - name: Verify authentication, row policies and storage
+      - name: Verify owner access, publication and private storage
         run: |
           eval "$(supabase status -o env)"
           export API_URL ANON_KEY SERVICE_ROLE_KEY
