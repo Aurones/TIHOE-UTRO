@@ -1,7 +1,7 @@
 export const defaultCategory = 'postelnoe-belie';
 export const categories = [
   {slug:defaultCategory,kind:'adult',name:'Постельное бельё',description:'Постельное бельё на заказ по вашим размерам. Комплекты и отдельные изделия для дома.',image:'./img/category-bedding.webp',position:10},
-  {slug:'polotentsa',kind:'towel',name:'Полотенца',description:'Мягкие полотенца для рук, лица и ванной. Выберите готовое изделие или соберите набор.',image:'./img/category-towels.webp',position:20},
+  {slug:'polotentsa',kind:'towel',name:'Полотенца',description:'Мягкие полотенца для рук, лица и ванной. Подберите размеры для индивидуального пошива.',image:'./img/category-towels.webp',position:20},
   {slug:'detskoe-postelnoe-belie',kind:'child',name:'Детское постельное бельё',description:'Бельё для детской кроватки. Подберите рисунок и соберите комплект по размеру матраса.',image:'./img/category-child.webp',position:30}
 ];
 

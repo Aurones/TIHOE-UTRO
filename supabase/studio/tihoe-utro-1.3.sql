@@ -366,7 +366,7 @@ with initial as (select $storefront${
    "slug": "polotentsa",
    "kind": "towel",
    "name": "Полотенца",
-   "description": "Мягкие полотенца для рук, лица и ванной. Выберите готовое изделие или соберите набор.",
+   "description": "Мягкие полотенца для рук, лица и ванной. Подберите размеры для индивидуального пошива.",
    "image": "./img/category-towels.webp",
    "position": 20
   },

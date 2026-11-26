@@ -40,7 +40,7 @@ const template=await readFile('public/index.html','utf8');
 const catalogPath='catalog/';
 const categoryPath=c=>catalogPath+c.slug+'/';
 const pageRoutes=[
- {path:'',title:'Тихое утро — постельное бельё и домашний текстиль на заказ',heading:'Уют, сшитый специально для вас',description:'Семейная мастерская домашнего текстиля. Постельное бельё для взрослых и детей, готовые полотенца и пошив по вашим размерам.',image:'./img/hero.webp'},
+ {path:'',title:'Тихое утро — постельное бельё и домашний текстиль на заказ',heading:'Уют, сшитый специально для вас',description:'Семейная мастерская домашнего текстиля. Постельное бельё для взрослых и детей, полотенца и пошив по вашим размерам.',image:'./img/hero.webp'},
  {path:catalogPath,title:'Каталог домашнего текстиля — Тихое утро',heading:'Каталог',description:'Комплекты постельного белья, полотенца и ткани для индивидуального пошива в мастерской «Тихое утро».',image:'./img/hero.webp'},
  ...categories.map(c=>({path:categoryPath(c),title:c.name+' — Тихое утро',heading:c.name,
    description:c.description,image:c.image,category:c.slug}))
