@@ -171,17 +171,21 @@ async function checkOwnerLayouts(mode){
 async function checkAssortment(){
   const to=slug=>new URL('catalog/'+slug+'/',base).href;
   const slugs=['postelnoe-belie','polotentsa','detskoe-postelnoe-belie'];
-  for(const width of widths){
-    await page.setViewportSize({width,height:800});
-    for(const slug of slugs){
-      const response=await page.goto(to(slug));
-      assert.equal(response.status(),200);
-      await page.locator('.category-intro').waitFor();
-      await checkGeometry(slug+' '+width);
-      await checkImages(slug+' '+width);
-      assert.equal(await page.locator('link[rel=canonical]').getAttribute('href'),'https://aurones.github.io/TIHOE-UTRO/catalog/'+slug+'/');
-      assert.match(await page.locator('meta[name=robots]').getAttribute('content'),/noindex/);
-      await page.screenshot({path:'artifacts/category-'+slug+'-'+width+'.jpg',type:'jpeg',quality:82,fullPage:true,animations:'disabled'});
+  for(const [label,mode] of [['Обычный','normal'],['Увеличенный','large']]){
+    await chooseTextSize(label);
+    for(const width of widths){
+      await page.setViewportSize({width,height:800});
+      for(const slug of slugs){
+        const response=await page.goto(to(slug));
+        assert.equal(response.status(),200);
+        await page.locator('.category-intro').waitFor();
+        await assertTextSize(mode);
+        await checkGeometry(slug+' '+mode+' '+width);
+        await checkImages(slug+' '+width);
+        assert.equal(await page.locator('link[rel=canonical]').getAttribute('href'),'https://aurones.github.io/TIHOE-UTRO/catalog/'+slug+'/');
+        assert.match(await page.locator('meta[name=robots]').getAttribute('content'),/noindex/);
+        await page.screenshot({path:'artifacts/category-'+slug+'-'+mode+'-'+width+'.jpg',type:'jpeg',quality:82,fullPage:true,animations:'disabled'});
+      }
     }
   }
   await page.setViewportSize({width:390,height:844});
@@ -202,6 +206,8 @@ async function checkAssortment(){
   await page.getByText('Детское постельное бельё',{exact:true}).waitFor();
   await page.goto(to('polotentsa'));
   await click('link','Выбрать «Полотенце по вашим размерам»');
+  await heading('Полотенце по вашим размерам');
+  await checkGeometry('Форма полотенца');
   await page.locator('#product-order select[name=size]').selectOption('Свой размер');
   await page.getByLabel('Ширина, см').fill('55');
   await page.getByLabel('Длина, см').fill('85');
@@ -228,7 +234,10 @@ async function checkAssortment(){
   await page.getByLabel('Простыня',{exact:true}).fill('70 × 130');
   await click('button','Сохранить категорию');
   await heading('Мой ассортимент');
+  assert.equal(await page.locator('.order-row h3').first().textContent(),'Текстиль для кухни');
   await click('link','Добавить товар');
+  await heading('Добавить товар');
+  await checkGeometry('Форма товара');
   await page.getByLabel('Название',{exact:true}).fill('Кухонное полотенце');
   await page.locator('#product-edit select[name=category_slug]').selectOption('kuhnya');
   await page.getByLabel('Материал',{exact:true}).fill('Хлопок');
@@ -239,6 +248,12 @@ async function checkAssortment(){
   await click('button','Сохранить товар');
   await heading('Мой ассортимент');
   await page.getByRole('heading',{name:'Кухонное полотенце'}).waitFor();
+  await page.goto(new URL('?category=kuhnya',base).href);
+  await page.locator('.category-intro').waitFor();
+  await heading('Кухонное полотенце');
+  await page.goto(ownerUrl);
+  await heading('Здравствуйте, мастер!');
+  await click('link','Открыть раздел «Мой ассортимент»');
   const row=page.locator('.order-row').filter({has:role('heading','Текстиль для кухни')});
   await row.getByRole('link',{name:'Редактировать категорию'}).click();
   await page.getByRole('checkbox',{name:'Архивировать категорию'}).check();

@@ -1,1 +1,1 @@
-{"name":"tihoe-utro","version":"1.2.0","type":"module","private":true,"scripts":{"dev":"node scripts/dev.mjs","build":"node scripts/build.mjs","test":"node tests/calc.test.mjs"}}
+{"name":"tihoe-utro","version":"1.2.0","type":"module","private":true,"scripts":{"dev":"node scripts/dev.mjs","build":"node scripts/build.mjs","test":"node tests/calc.test.mjs && node tests/seo.mjs"}}
