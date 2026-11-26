@@ -22,7 +22,7 @@ const buyer=(await signup()).access_token,other=(await signup()).access_token;
 assert.equal(await rpc('owner_status',{},owner),true);
 assert.equal(await rpc('owner_status',{},buyer),false);
 const id=randomUUID(),hiddenId=randomUUID();
-const fabric={id,name:'Тестовый сатин',material:'Сатин',composition:'Хлопок',colors:['Шалфей'],width:220,rate:600,stock:20,photo:id+'/'+randomUUID()+'.jpg'};
+const fabric={id,name:'Тестовый сатин',material:'Сатин',composition:'Хлопок',colors:['Шалфей'],width:220,rate:600,stock:20,hidden:false,photo:id+'/'+randomUUID()+'.jpg'};
 await request('/rest/v1/fabrics',{method:'POST',token:owner,data:[fabric,{...fabric,id:hiddenId,hidden:true}],expected:201});
 assert.deepEqual(await request('/rest/v1/fabrics',{token:buyer}),[]);
 assert.deepEqual(await request('/rest/v1/settings',{token:buyer}),[]);
