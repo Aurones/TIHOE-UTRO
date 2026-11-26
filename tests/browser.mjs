@@ -153,7 +153,7 @@ async function checkLayouts(mode){
       const nav=await page.locator('.nav').boundingBox();
       assert.ok(heroImage.y+heroImage.height<=title.y,label+' · фотография перед заголовком');
       assert.ok(primary.y+primary.height<=nav.y,label+' · основное действие над навигацией');
-      assert.ok(primary.height>=48,label+' · высота кнопки');
+      assert.ok(await role('link','Собрать свой комплект').evaluate(el=>el.offsetHeight)>=48,label+' · высота кнопки');
     }
     await page.screenshot({path:'artifacts/home-'+mode+'-'+width+'.jpg',type:'jpeg',quality:82,fullPage:true,animations:'disabled'});
   }
