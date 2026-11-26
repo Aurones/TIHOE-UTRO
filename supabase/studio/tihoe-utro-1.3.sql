@@ -98,7 +98,7 @@ begin
  end loop;
  foreach k in array array['categories','products','fabrics'] loop
   if jsonb_typeof(data->k) is distinct from 'array' then raise exception 'Проверьте ассортимент.';end if;
-  if jsonb_array_length(data->k)>case when k='categories' then 80 else 300 end then raise exception 'Слишком много позиций в ассортименте.';end if;
+  if jsonb_array_length(data->k)>(case when k='categories' then 80 else 300 end) then raise exception 'Слишком много позиций в ассортименте.';end if;
  end loop;
  if length(trim(coalesce(data->'home'->>'title',''))) not between 1 and 120 or
     length(coalesce(data->'home'->>'description',''))>350 or
@@ -401,4 +401,5 @@ with initial as (select $storefront${
 insert into workshop_private.storefront(draft,live,public_doc)
 select data,data,workshop_private.public_storefront(data) from initial
 on conflict(id) do nothing;
+notify pgrst, 'reload schema';
 commit;

@@ -224,3 +224,7 @@ details[open] summary::before {content:'−'}
 .draft-preview {border:1px solid var(--line);border-radius:10px;background:var(--milk)}
 #cart-message {white-space:pre-wrap}
 .preview-logo {width:40px;height:40px;object-fit:contain;margin:.65rem 1rem 0}
+
+@media(max-width:510px) {
+  :root[data-text-size=large] .owner-tile {flex-direction:column}
+}
