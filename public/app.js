@@ -301,7 +301,11 @@ function productPage(id){
  const product=publicProducts.find(p=>p.id===id&&p.available);
  if(!product)return panel('Товар недоступен',href('./catalog/','Вернуться в каталог'));
  const previous=load('qu-product-options',null);
- const values=previous?.id===id?previous:{};
+ const values=previous?.id===id?{...previous}:{};
+ if(product.custom_size&&values.size&&sizePattern.test(values.size)&&!values.size.includes(';')&&!product.sizes.includes(values.size)){
+   [values.w,values.l]=values.size.split(' × ').map(Number);
+   values.size='Свой размер';
+ }
  return panel(esc(product.name),'<div class="stack"><p>'+esc(product.description)+' · '+esc(product.material)+'</p>'+
   (demo?'<p class="tag">Демонстрационная позиция</p>':'')+
   '<form id="product-order" data-id="'+esc(id)+'" class="panel stack"><div class="row">'+

@@ -215,7 +215,11 @@ async function checkAssortment(){
   await click('button','Проверить стоимость');
   await page.getByText('Предварительная стоимость. Мастер подтвердит её после проверки.').waitFor();
   await finishTestOrder();
-  await page.getByText(/55 × 85 см.*2 шт/).waitFor();
+  const customOrder=page.locator('article').filter({hasText:/55 × 85 см.*2 шт/});
+  await customOrder.getByRole('button',{name:'Повторить заказ'}).click();
+  await heading('Полотенце по вашим размерам');
+  assert.equal(await page.getByLabel('Ширина, см').inputValue(),'55');
+  assert.equal(await page.getByLabel('Длина, см').inputValue(),'85');
   await page.goto(to('polotentsa'));
   await click('link','Выбрать «Набор из трёх полотенец»');
   await click('button','Проверить стоимость');
