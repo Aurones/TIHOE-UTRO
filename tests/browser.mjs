@@ -19,7 +19,10 @@ try {
     await heading('Уют, сшитый специально для вас');
     const sizes=await page.evaluate(()=>({width:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth}));
     assert.equal(sizes.scroll,sizes.width,'Главная шириной '+width);
-    await page.evaluate(()=>Promise.all([...document.images].map(img=>{img.loading='eager';return img.decode();})));
+    await page.evaluate(()=>{for(const img of document.images)img.loading='eager';});
+    await page.waitForFunction(()=>[...document.images].every(img=>img.complete));
+    const broken=await page.evaluate(()=>[...document.images].filter(img=>!img.naturalWidth||img.dataset.fallback).map(img=>img.getAttribute('src')));
+    assert.deepEqual(broken,[],'Изображения на ширине '+width);
     await page.screenshot({path:'artifacts/home-'+width+'.png',fullPage:true});
   }
   await page.setViewportSize({width:390,height:844});
