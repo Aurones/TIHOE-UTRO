@@ -3,6 +3,16 @@ import {config} from './config.js';
 import {products,defaultRules,calculate} from './calc.js';
 
 const $=s=>document.querySelector(s);
+const ownerEntry='./?mode=owner#/owner';
+const ownerApp=new URLSearchParams(location.search).get('mode')==='owner';
+if(ownerApp&&!location.hash)history.replaceState(null,'',ownerEntry);
+$('#app-manifest').href=ownerApp?'./owner.webmanifest':'./manifest.webmanifest';
+
+const textSizeKey='qu-text-size';
+function applyTextSize(size){
+  document.documentElement.dataset.textSize=size==='large'?'large':'normal';
+}
+applyTextSize(load(textSizeKey,'normal'));
 const esc=(v='')=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const rub=n=>new Intl.NumberFormat('ru-RU',{style:'currency',currency:'RUB',maximumFractionDigits:0}).format(n);
 const date=v=>new Date(v).toLocaleString('ru-RU',{dateStyle:'short',timeStyle:'short'});
@@ -11,6 +21,7 @@ const glyph={
  orders:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 9h6m-6 4h6m-6 4h4"/>', chat:'<path d="M21 11a8 8 0 0 1-8 8H4l2-4a8 8 0 1 1 15-4Z"/><path d="M9 11h7m-7 3h4"/>',
  leaf:'<path d="M20 4c0 10-3 16-10 16-4 0-6-2-6-6 0-6 7-9 16-10ZM4 21 15 10"/>',
  ruler:'<path d="m3 16 13-13 5 5L8 21zM7 12l2 2m1-5 2 2m1-5 2 2"/>',
+ stats:'<path d="M4 20V5m0 15h16M9 16v-4m5 4V7m5 9v-6"/>',
  heart:'<path d="M12 21 4 13a5 5 0 1 1 8-6 5 5 0 1 1 8 6z"/>'
 };
 const icon=n=>'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'+glyph[n]+'</svg>';
@@ -58,15 +69,18 @@ function showError(form,cause){const el=form.querySelector('[data-error]');if(el
 function go(path){if(location.hash===path) render();else location.hash=path;}
 function frame(){
   const active=route.split('/')[0]||'home';
-  $('#header').innerHTML='<div class="bar"><a class="brand" href="#/"><img src="./img/sun.svg" alt="">Тихое утро</a><nav class="nav" aria-label="Основная навигация">'+Object.entries(map).map(([k,v])=>'<a href="'+links[k]+'" '+(k===active?'aria-current="page"':'')+'>'+icon(k)+v+'</a>').join('')+'</nav>'+href(contactLink(),'Связаться','contact')+'</div>';
-  $('#mode').innerHTML=demo?'<div class="mode">Демонстрационный режим · ткани и цены примерные, заказы тестовые</div>':'';
-  $('#footer').innerHTML='<div class="wrap foot"><span>Тихое утро · Сшито с любовью. Создано для уюта</span><a href="#/install">Установить приложение</a><a href="#/privacy">Конфиденциальность</a><a href="#/owner">Кабинет владельца</a></div>';
+  $('#header').innerHTML='<div class="bar"><a class="brand" href="#/"><img src="./img/sun.svg" alt="">Тихое утро</a><nav class="nav" aria-label="Основная навигация">'+Object.entries(map).map(([k,v])=>'<a href="'+links[k]+'" '+(k===active?'aria-current="page"':'')+'>'+icon(k)+'<span>'+v+'</span></a>').join('')+'</nav>'+href(contactLink(),'Связаться','contact')+'</div>';
+  $('#mode').innerHTML=demo?'<div class="mode"><strong>Демонстрационный режим</strong> · тестовые заказы</div>':'';
+  const size=document.documentElement.dataset.textSize;
+  $('#footer').innerHTML='<div class="wrap foot"><div class="foot-brand"><span>Сшито с любовью. Создано для уюта</span><small>Версия 1.1</small></div><div class="foot-links"><a href="#/install">Установить приложение</a><a href="#/privacy">Конфиденциальность</a><a href="'+ownerEntry+'">Кабинет владельца</a></div><details class="display-settings"><summary>Размер текста</summary><fieldset><legend>Размер интерфейса</legend>'+[['normal','Обычный'],['large','Увеличенный']].map(([value,label])=>'<label class="check"><input type="radio" name="text-size" value="'+value+'" '+(size===value?'checked':'')+'>'+label+'</label>').join('')+'</fieldset></details></div>';
 }
 function cards(list,full=false){
   if(!list.length)return '<p>По этим условиям ткани не найдены.</p>';
   return '<div class="grid">'+list.map(f=>'<article class="card media"><button type="button" class="image-btn" data-photo="'+esc(f.id)+'" aria-label="Увеличить фото '+esc(f.name)+'"><img src="'+esc(photo(f))+'" alt="'+esc(f.name)+'" loading="lazy"></button><div class="card-body stack"><h3>'+esc(f.name)+'</h3><p class="muted">'+esc(f.composition)+'</p>'+(full?'<p>'+esc(f.description)+'</p><p>Расцветки: '+esc(f.colors.join(', '))+'</p><p>Ширина рулона: '+f.width+' см</p>':'')+'<p><span class="tag">'+(f.available?'В наличии':'Нет в наличии')+'</span></p>'+(full&&f.available?'<button class="primary" data-choose="'+esc(f.id)+'">Выбрать ткань</button>':'')+'</div></article>').join('')+'</div>';
 }
-function home(){return '<div class="wrap"><section class="hero"><div class="hero-copy"><p class="eyebrow">Семейная мастерская</p><h1>Уют, сшитый специально для вас</h1><p>Шьём постельное бельё по вашим размерам. Выберите ткань и соберите комплект, в котором приятно просыпаться.</p>'+actions(href('#/build','Собрать свой комплект','primary')+href('#/fabrics','Посмотреть ткани'))+'</div><img class="hero-image" src="./img/hero.webp" alt="Постельное бельё шалфейного цвета в мягком утреннем свете" fetchpriority="high"></section><ul class="features"><li>'+icon('leaf')+'Натуральные ткани</li><li>'+icon('ruler')+'Пошив по вашим размерам</li><li>'+icon('heart')+'Ручная работа</li></ul><section class="section"><div class="section-top"><div><p class="eyebrow">Коллекция мастерской</p><h2>Ткани для вашего дома</h2></div>'+href('#/fabrics','Все ткани')+'</div>'+cards(fabrics.slice(0,3))+'</section></div>';}
+function home(){
+  return '<div class="wrap"><section class="hero"><img class="hero-image" src="./img/hero.webp" alt="Постельное бельё шалфейного цвета в мягком утреннем свете" width="1200" height="800" fetchpriority="high"><div class="hero-copy"><p class="eyebrow">Семейная мастерская</p><h1>Уют, сшитый специально для вас</h1><p class="hero-description">Постельное бельё по вашим размерам. Выберите ткань, а мы сошьём комплект для вашего дома.</p>'+actions(href('#/build','Собрать свой комплект','primary')+href('#/fabrics','Посмотреть ткани','quiet'))+'</div></section><ul class="features"><li>'+icon('leaf')+'Натуральные ткани</li><li>'+icon('ruler')+'Пошив по вашим размерам</li><li>'+icon('heart')+'Ручная работа</li></ul><section class="section"><div class="section-top"><h2>Ткани для вашего дома</h2>'+href('#/fabrics','Все ткани','quiet')+'</div>'+cards(fabrics.slice(0,3))+'</section></div>';
+}
 function catalog(){return '<section class="wrap page stack"><h1>Ткани</h1><form id="filters" class="row three">'+field('Поиск по названию или цвету','q','','','search')+select('Материал','material',['Все материалы',...new Set(fabrics.map(f=>f.material))])+check('Только в наличии','stock')+'</form><div id="catalog-results">'+cards(fabrics,true)+'</div></section>';}
 function applyFilters(form){const {q,material,stock}=Object.fromEntries(new FormData(form));$('#catalog-results').innerHTML=cards(fabrics.filter(f=>(material==='Все материалы'||f.material===material)&&(!stock||f.available)&&[f.name,f.material,...f.colors].join(' ').toLowerCase().includes(q.trim().toLowerCase())),true);}
 const firstItem=type=>({type,w:products[type].sizes[0][0],l:products[type].sizes[0][1],h:20,qty:type==='pillow'?2:1,closure:type==='pillow'?'Клапан':type==='duvet'?'Молния':'Без застёжки'});
@@ -113,7 +127,7 @@ function ordersPage(orders){
   return panel('Мои заказы','<div class="stack">'+(demo?'<p>Здесь отображаются тестовые заказы из этого браузера.</p>':'<p>Заказы доступны в браузере, в котором вы их оформили.</p>')+(orders.length?orders.map(o=>'<article class="card stack"><h2>'+orderLabel(o)+'</h2><p>'+statusLabel(o)+'</p><p>'+esc(o.fabric_name)+' · '+date(o.created_at)+'</p>'+summary(o.items||[])+(o.final_price!=null?'<p>Согласованная цена: '+rub(o.final_price)+'</p>':o.estimate!=null?'<p>Предварительная стоимость: '+rub(o.estimate)+'</p>':'')+(o.due?'<p>Срок готовности: '+esc(o.due)+'</p>':'')+actions(href('#/chat/'+o.id,'Открыть чат')+'<button data-repeat="'+o.id+'">Повторить заказ</button>')+'</article>').join(''):'<p>У вас пока нет заказов.</p>'+href('#/build','Собрать свой комплект','primary'))+'</div>');
 }
 function infoPage(kind){
-  if(kind==='install')return panel('Установить приложение','<div class="panel stack"><h2>На Android</h2><p>Откройте сайт в Chrome. Нажмите меню ⋮ и выберите «Установить приложение» или «Добавить на главный экран».</p><h2>На iPhone</h2><p>Откройте сайт в Safari. Нажмите «Поделиться», затем «На экран Домой» и «Добавить».</p><p>Каталог и отправка заказов в рабочем режиме требуют интернета.</p></div>');
+  if(kind==='install')return panel('Установить приложение','<div class="panel stack"><h2>На Android</h2><p>Откройте сайт в Chrome. Нажмите меню ⋮ и выберите «Установить приложение» или «Добавить на главный экран».</p><h2>На iPhone</h2><p>Откройте сайт в Safari. Нажмите «Поделиться», затем «На экран Домой» и «Добавить».</p><p>Для отдельного значка кабинета на Android откройте <a href="'+ownerEntry+'">кабинет владельца</a> в Chrome и установите его через то же меню. В рабочем режиме понадобится вход.</p><p>Каталог и отправка заказов в рабочем режиме требуют интернета.</p></div>');
   return panel('Конфиденциальность','<div class="panel stack"><p>Имя и контакт используют, чтобы уточнить размеры, согласовать цену и передать заказ. В переписке можно прикреплять фото, связанные с заказом.</p><p>Доступ к заказу получают мастерская и браузер, из которого вы отправили заказ. В демонстрации данные заказов хранятся в этом браузере. Вводите только вымышленные имя и контакт.</p><p>В рабочей версии запросить исправление или удаление данных можно в переписке по заказу.</p>'+href('#/chat','Открыть чат')+'</div>');
 }
 async function submitOrder(form){
@@ -130,14 +144,28 @@ async function submitOrder(form){
   }else await rpc('place_order',{p:payload},true);
   saveCheckout({});draft=blank();saveDraft();notice(demo?'Тестовый заказ сохранён в этом браузере.':'Заказ принят. Статус доступен в разделе «Мои заказы».');go('#/orders');
 }
-const ownerNav=()=>actions(href('#/owner','Обзор')+href('#/owner/orders','Заказы')+href('#/owner/fabrics','Мои ткани')+href('#/owner/messages','Сообщения')+href('#/owner/stats','Статистика')+'<button data-logout>Выйти</button>');
-const ownerPage=(title,body)=>'<section class="wrap page stack">'+ownerNav()+'<h1>'+title+'</h1>'+body+'</section>';
+const ownerSections=[
+ ['orders','Заказы','Новые и текущие заказы','orders'],
+ ['fabrics','Мои ткани','Фотографии и остатки','fabrics'],
+ ['messages','Сообщения','Переписка с покупателями','chat'],
+ ['stats','Статистика','Оплаты, расходы и выручка','stats']
+];
+function ownerNav(){
+ const current=route.split('/')[1];
+ const links=[['','Обзор'],...ownerSections].map(([path,name])=>{
+   const active=path===(current||'');
+   return '<a href="#/owner'+(path?'/'+path:'')+'" '+(active?'aria-current="page"':'')+'>'+name+'</a>';
+ });
+ return '<nav class="owner-nav" aria-label="Разделы кабинета">'+links.join('')+'<button class="quiet" data-logout>Выйти</button></nav>';
+}
+const ownerPage=(title,body)=>'<section class="wrap page stack owner-page">'+ownerNav()+'<h1>'+title+'</h1>'+body+'</section>';
 const allOrders=()=>demo?Promise.resolve(demoOrders()):table('orders','?order=created_at.desc&limit=5000');
 const allFabrics=()=>demo?Promise.resolve(load('qu-demo-fabrics',sample)):table('fabrics','?order=name');
 function login(){return panel('Кабинет владельца',demo?'<div class="panel stack"><p>В демонстрационном кабинете можно управлять тестовыми заказами и тканями в этом браузере.</p><button class="primary" data-demo-owner>Открыть демонстрационный кабинет</button></div>':'<form id="login" class="panel stack">'+field('Электронная почта','email','','required autocomplete="username"','email')+field('Пароль','password','','required autocomplete="current-password"','password')+error+'<button class="primary">Войти</button></form>');}
 function dashboard(orders){
   const active=orders.filter(o=>o.status!=='Отменён');
-  return ownerPage('Здравствуйте, мастер!', '<p>Новых заказов: <strong>'+active.filter(o=>o.status===statuses[0]).length+'</strong> · Получено по активным и завершённым заказам: <strong>'+rub(active.reduce((s,o)=>s+Number(o.paid||0),0))+'</strong></p>'+href('#/owner/order/new','Создать заказ','primary')+'<div class="grid">'+[['orders','Заказы','Проверить новые и текущие заказы'],['fabrics','Мои ткани','Обновить фотографии, расцветки и остатки'],['messages','Сообщения','Ответить покупателям'],['stats','Статистика','Посмотреть оплаты, расходы и выручку']].map(([id,name,desc])=>'<article class="card"><h2>'+name+'</h2><p>'+desc+'</p>'+href('#/owner/'+id,'Открыть раздел «'+name+'»')+'</article>').join('')+'</div>');
+  const received=active.reduce((sum,o)=>sum+Number(o.paid||0),0);
+  return ownerPage('Здравствуйте, мастер!', '<dl class="owner-overview"><div><dt>Новые заказы</dt><dd>'+active.filter(o=>o.status===statuses[0]).length+'</dd></div><div><dt>Получено по заказам</dt><dd>'+rub(received)+'</dd></div></dl>'+href('#/owner/order/new','Создать заказ','primary')+'<div class="owner-sections">'+ownerSections.map(([id,name,desc,glyph])=>'<a class="card owner-tile" href="#/owner/'+id+'" aria-label="Открыть раздел «'+name+'»">'+icon(glyph)+'<div><h2>'+name+'</h2><p>'+desc+'</p></div></a>').join('')+'</div>');
 }
 function ownerOrderList(orders,section='orders'){
   if(section==='messages')return ownerPage('Сообщения',demo?'<p>Рабочий чат появится после подключения базы. Тестовые сообщения не отправляются.</p>':'<div class="stack">'+(orders.map(o=>'<div class="panel">'+href('#/owner/chat/'+o.id,esc(o.customer)+' · '+orderLabel(o))+' '+(o.customer_unread?'<span class="tag">Новые сообщения</span>':'')+'</div>').join('')||'<p>Переписок пока нет.</p>')+'</div>');
@@ -145,7 +173,7 @@ function ownerOrderList(orders,section='orders'){
 }
 function fillOwnerOrders(form,orders){
  const {q,status,archived}=Object.fromEntries(new FormData(form));
- $('#owner-orders').innerHTML=orders.filter(o=>!!o.archived===!!archived&&(status==='Все статусы'||o.status===status)&&[o.id,o.customer].join(' ').toLowerCase().includes(q.trim().toLowerCase())).map(o=>'<article class="panel"><h3>'+orderLabel(o)+' · '+esc(o.customer)+'</h3><p>'+statusLabel(o)+' · '+date(o.created_at)+'</p>'+href('#/owner/order/'+o.id,'Открыть заказ')+'</article>').join('')||'<p>Заказы не найдены.</p>';
+ $('#owner-orders').innerHTML=orders.filter(o=>!!o.archived===!!archived&&(status==='Все статусы'||o.status===status)&&[o.id,o.customer].join(' ').toLowerCase().includes(q.trim().toLowerCase())).map(o=>'<article class="panel order-row"><div><h3>'+esc(o.customer)+'</h3><p class="order-meta"><span>'+orderLabel(o)+'</span><span>'+date(o.created_at)+'</span>'+statusLabel(o)+'</p></div>'+href('#/owner/order/'+o.id,'Открыть заказ','quiet')+'</article>').join('')||'<p>Заказы не найдены.</p>';
 }
 function ownerOrderForm(o,list){
  const isNew=!o.id;
@@ -183,7 +211,7 @@ function statsCalc(orders,period){
 }
 function statsFill(orders,period){
  const {labels,popular}=statsCalc(orders,period);
- $('#stats-result').innerHTML='<div class="grid">'+Object.entries(labels).map(([k,v])=>'<article class="card stat">'+k+'<strong>'+(['Количество заказов','Постоянные клиенты'].includes(k)?v:rub(v))+'</strong></article>').join('')+'</div><h2>Популярные ткани</h2>'+(popular.map(([k,v])=>'<p>'+esc(k)+' · '+v+'<meter aria-label="'+esc(k)+'" min="0" max="'+popular[0][1]+'" value="'+v+'"></meter></p>').join('')||'<p>За выбранный период заказов нет.</p>');
+ $('#stats-result').innerHTML='<div class="grid stat-grid">'+Object.entries(labels).map(([k,v])=>'<article class="card stat">'+k+'<strong>'+(['Количество заказов','Постоянные клиенты'].includes(k)?v:rub(v))+'</strong></article>').join('')+'</div><h2>Популярные ткани</h2>'+(popular.map(([k,v])=>'<p>'+esc(k)+' · '+v+'<meter aria-label="'+esc(k)+'" min="0" max="'+popular[0][1]+'" value="'+v+'"></meter></p>').join('')||'<p>За выбранный период заказов нет.</p>');
 }
 function csv(rows,name){
  const quote=v=>{let s=String(v??'');if(/^[\s]*[=+@\-]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';};
@@ -337,6 +365,11 @@ document.addEventListener('input',e=>{
  }
 });
 document.addEventListener('change',e=>{
+ if(e.target.name==='text-size'){
+   applyTextSize(e.target.value);
+   try{write(textSizeKey,e.target.value);}catch{}
+   return;
+ }
  if(e.target.name!=='preset'||e.target.value==='Свои размеры')return;
  const [w,l]=e.target.value.split(' × ');
  const box=e.target.closest('[data-item]');

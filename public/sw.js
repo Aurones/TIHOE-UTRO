@@ -1,5 +1,5 @@
 const cacheName = 'quiet-morning-development';
-const staticFiles = ['./','./index.html','./style.css','./app.js','./api.js','./calc.js','./config.js','./manifest.webmanifest','./img/sun.svg','./img/icon-192.png','./img/icon-512.png','./img/hero.webp','./img/satin.webp','./img/poplin.webp','./img/calico.webp'];
+const staticFiles = ['./','./?mode=owner','./index.html','./style.css','./app.js','./api.js','./calc.js','./config.js','./manifest.webmanifest','./owner.webmanifest','./img/sun.svg','./img/icon-192.png','./img/icon-512.png','./img/hero.webp','./img/satin.webp','./img/poplin.webp','./img/calico.webp'];
 const allow = new Set(staticFiles.map(path => new URL(path,self.registration.scope).href));
 self.addEventListener('install', event => event.waitUntil(caches.open(cacheName).then(cache=>cache.addAll(staticFiles)).then(()=>self.skipWaiting())));
 self.addEventListener('activate', event => event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('quiet-morning-')&&key!==cacheName).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
