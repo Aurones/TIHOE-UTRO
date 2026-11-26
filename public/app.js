@@ -506,7 +506,9 @@ async function imageFile(file){
    const img=new Image();img.src=url;await img.decode();
    const scale=Math.min(1,1280/Math.max(img.width,img.height));
    const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));
-   canvas.getContext('2d',{alpha:false}).drawImage(img,0,0,canvas.width,canvas.height);
+   const drawing=canvas.getContext('2d',{alpha:false});
+   drawing.fillStyle='#f8f4ec';drawing.fillRect(0,0,canvas.width,canvas.height);
+   drawing.drawImage(img,0,0,canvas.width,canvas.height);
    const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.76));
    if(!blob||blob.size>2*1024*1024)throw new Error('Фотография слишком большая.');
    return blob;
@@ -520,7 +522,7 @@ async function saveFabric(form){
  if(!path)throw new Error('Добавьте фотографию ткани.');
  const f={id,category_slug:v.category_slug||null,name:v.name.trim(),material:v.material.trim(),composition:v.composition.trim(),description:v.description,colors,width:Number(v.width),rate:Number(v.rate),stock:Number(v.stock),direction:!!v.direction,available:!!v.available,hidden:!!v.hidden,photo:path};
  await saveSection('fabrics',[f,...dataFabrics.filter(p=>p.id!==id)]);
-go('#/owner/fabrics');
+ go('#/owner/fabrics');
 }
 function applyPageMetadata(area,slug){
  if(area==='category'){

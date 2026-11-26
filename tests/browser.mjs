@@ -101,7 +101,14 @@ try{
   await click('link','Открыть раздел «Главная страница»');
   await page.getByLabel('Главный заголовок').fill('Текстиль для тихих дней');
   await page.locator('#home-edit input[name=hero]').setInputFiles('public/img/category-bedding.webp');
-  await page.locator('#home-edit input[name=logo]').setInputFiles('public/img/category-towels.webp');
+  const transparentLogo=await page.evaluate(()=>{
+    const canvas=document.createElement('canvas');canvas.width=40;canvas.height=40;
+    const context=canvas.getContext('2d');context.fillStyle='#654c39';context.fillRect(15,15,10,10);
+    return canvas.toDataURL('image/png').split(',')[1];
+  });
+  await page.locator('#home-edit input[name=logo]').setInputFiles({
+    name:'logo.png',mimeType:'image/png',buffer:Buffer.from(transparentLogo,'base64')
+  });
   await click('button','Сохранить черновик');
   await click('link','Открыть раздел «Акции и объявления»');
   const notice=page.getByRole('group',{name:'Объявление'});
@@ -122,6 +129,13 @@ try{
   const uploaded=await page.locator('.draft-preview .hero-image').getAttribute('src');
   assert.match(uploaded,/^data:image\/jpeg;base64,/);
   assert.ok(uploaded.length<200000);
+  const logoCorner=await page.locator('.preview-logo').evaluate(async img=>{
+    await img.decode();
+    const canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;
+    const context=canvas.getContext('2d');context.drawImage(img,0,0);
+    return [...context.getImageData(0,0,1,1).data];
+  });
+  assert.ok(logoCorner.slice(0,3).every(component=>component>220));
   const guest=await context.newPage();
   await guest.goto(base);
   await guest.locator('.hero h1').waitFor();
