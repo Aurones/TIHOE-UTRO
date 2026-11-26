@@ -13,7 +13,10 @@ async function request(path,options={},token=config.key) {
   try {res=await fetch(base+path,{...options,cache:'no-store',headers:{apikey:config.key,...(token&&token!==config.key?{Authorization:'Bearer '+token}:{}),'Content-Type':'application/json',...options.headers}});}
   catch {throw new Error('Нет связи с сервером. Проверьте интернет и повторите попытку.');}
   const data=await res.json().catch(()=>null);
-  if(!res.ok) throw new Error(data?.code==='P0001'?data.message:res.status===429?'Слишком много запросов. Попробуйте позже.':res.status===401||res.status===403?'Доступ закрыт. Проверьте данные для входа.':'Сервер не смог выполнить запрос. Попробуйте ещё раз.');
+  if(!res.ok) {
+    const message=data?.code==='P0001'?data.message:res.status===429?'Слишком много запросов. Попробуйте позже.':res.status===401||res.status===403?'Доступ закрыт. Проверьте данные для входа.':'Сервер не смог выполнить запрос. Попробуйте ещё раз.';
+    throw Object.assign(new Error(message),{code:data?.code});
+  }
   return data;
 }
 function saveSession(data,kind) {

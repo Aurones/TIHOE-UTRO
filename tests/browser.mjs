@@ -25,7 +25,7 @@ try {
   await chooseTextSize('Обычный');
   await assertTextSize('normal');
   await page.setViewportSize({width:390,height:844});
-  await click('link','Посмотреть ткани');
+  await click('link','Посмотреть каталог');
   await page.getByLabel('Поиск по названию или цвету').fill('шалфей');
   assert.equal(await page.locator('#catalog-results article').count(),1);
   await click('button','Увеличить фото Сатин «Шалфей»');
@@ -81,8 +81,8 @@ try {
   await checkGeometry('Статистика владельца');
   await click('link','Кабинет владельца');
   await role('heading','Здравствуйте, мастер!').waitFor();
-  await click('link','Открыть раздел «Мои ткани»');
-  await heading('Мои ткани');
+  await click('link','Открыть раздел «Мой ассортимент»');
+  await heading('Мой ассортимент');
   await page.getByRole('link',{name:'Редактировать',exact:true}).first().click();
   await heading('Редактировать ткань');
   await checkGeometry('Форма ткани');
@@ -97,6 +97,7 @@ try {
   await page.goto(ownerUrl);
   await heading('Здравствуйте, мастер!');
   await context.setOffline(false);
+  await checkAssortment();
   await page.emulateMedia({reducedMotion:'reduce'});
   await page.goto(base);
   assert.equal(await page.locator('.hero').evaluate(el=>getComputedStyle(el.parentElement).animationName),'none');
@@ -165,4 +166,94 @@ async function checkOwnerLayouts(mode){
     await checkGeometry('Кабинет '+mode+' '+width);
     await page.screenshot({path:'artifacts/owner-'+mode+'-'+width+'.jpg',type:'jpeg',quality:82,fullPage:true,animations:'disabled'});
   }
+}
+
+async function checkAssortment(){
+  const to=slug=>new URL('catalog/'+slug+'/',base).href;
+  const slugs=['postelnoe-belie','polotentsa','detskoe-postelnoe-belie'];
+  for(const width of widths){
+    await page.setViewportSize({width,height:800});
+    for(const slug of slugs){
+      const response=await page.goto(to(slug));
+      assert.equal(response.status(),200);
+      await page.locator('.category-intro').waitFor();
+      await checkGeometry(slug+' '+width);
+      await checkImages(slug+' '+width);
+      assert.equal(await page.locator('link[rel=canonical]').getAttribute('href'),'https://aurones.github.io/TIHOE-UTRO/catalog/'+slug+'/');
+      assert.match(await page.locator('meta[name=robots]').getAttribute('content'),/noindex/);
+      await page.screenshot({path:'artifacts/category-'+slug+'-'+width+'.jpg',type:'jpeg',quality:82,fullPage:true,animations:'disabled'});
+    }
+  }
+  await page.setViewportSize({width:390,height:844});
+  await click('link','Собрать детский комплект');
+  await heading('Собрать детский комплект');
+  await page.locator('#builder select[name=fabric]').selectOption('child-cotton');
+  await page.locator('#builder select[name=color]').selectOption('Шалфейный с веточками');
+  await click('button','Продолжить');
+  await page.getByRole('checkbox',{name:'Простыня на резинке'}).check();
+  await click('button','Продолжить');
+  assert.equal(await page.getByLabel('Длина, см').inputValue(),'120');
+  await page.locator('[name=preset]').selectOption('70 × 140');
+  assert.equal(await page.getByLabel('Длина, см').inputValue(),'140');
+  await click('button','Продолжить');
+  await page.getByLabel('Пожелания к пошиву').fill('Детский комплект');
+  await click('button','Продолжить');
+  await finishTestOrder();
+  await page.getByText('Детское постельное бельё',{exact:true}).waitFor();
+  await page.goto(to('polotentsa'));
+  await click('link','Выбрать «Полотенце по вашим размерам»');
+  await page.locator('#product-order select[name=size]').selectOption('Свой размер');
+  await page.getByLabel('Ширина, см').fill('55');
+  await page.getByLabel('Длина, см').fill('85');
+  await page.getByLabel('Количество',{exact:true}).fill('2');
+  await click('button','Проверить стоимость');
+  await page.getByText('Предварительная стоимость. Мастер подтвердит её после проверки.').waitFor();
+  await finishTestOrder();
+  await page.getByText(/55 × 85 см.*2 шт/).waitFor();
+  await page.goto(to('polotentsa'));
+  await click('link','Выбрать «Набор из трёх полотенец»');
+  await click('button','Проверить стоимость');
+  await page.getByText('Фиксированная стоимость',{exact:true}).waitFor();
+  await finishTestOrder();
+  await page.getByText(/Фиксированная цена/).waitFor();
+  await page.goto(ownerUrl);
+  await heading('Здравствуйте, мастер!');
+  await click('link','Открыть раздел «Мой ассортимент»');
+  await click('link','Добавить категорию');
+  await page.getByLabel('Название',{exact:true}).fill('Текстиль для кухни');
+  await page.getByLabel('Часть адреса латиницей').fill('kuhnya');
+  await page.getByLabel('Описание',{exact:true}).fill('Тестовая категория для кухни.');
+  await page.getByLabel('Порядок показа').fill('1');
+  await click('button','Сохранить категорию');
+  await heading('Мой ассортимент');
+  await click('link','Добавить товар');
+  await page.getByLabel('Название',{exact:true}).fill('Кухонное полотенце');
+  await page.locator('#product-edit select[name=category_slug]').selectOption('kuhnya');
+  await page.getByLabel('Материал',{exact:true}).fill('Хлопок');
+  await page.getByLabel('Размеры, по одному варианту на строку').fill('30 x 50');
+  await page.getByLabel('Расцветки через запятую').fill('Льняной');
+  await page.getByLabel('Цена за товар или пошив одной детали, ₽').fill('450');
+  await page.locator('#product-edit input[type=file]').setInputFiles('public/img/category-towels.webp');
+  await click('button','Сохранить товар');
+  await heading('Мой ассортимент');
+  await page.getByRole('heading',{name:'Кухонное полотенце'}).waitFor();
+  const row=page.locator('.order-row').filter({has:role('heading','Текстиль для кухни')});
+  await row.getByRole('link',{name:'Редактировать категорию'}).click();
+  await page.getByRole('checkbox',{name:'Архивировать категорию'}).check();
+  await click('button','Сохранить категорию');
+  await heading('Мой ассортимент');
+  await page.getByText('Порядок 1 · В архиве').waitFor();
+  await page.goto(new URL('?category=kuhnya',base).href);
+  await heading('Категория недоступна');
+  const robots=await (await page.request.get(new URL('robots.txt',base).href)).text();
+  assert.match(robots,/Disallow: \/\n/);
+  const sitemap=await (await page.request.get(new URL('sitemap.xml',base).href)).text();
+  assert.ok(!sitemap.includes('<url>'));
+}
+async function finishTestOrder(){
+  await page.getByLabel('Имя',{exact:true}).fill('Тестовый покупатель');
+  await page.getByLabel('Телефон или другой способ связи').fill('test@example.invalid');
+  await page.getByRole('checkbox',{name:'Согласен на обработку данных для оформления заказа'}).check();
+  await click('button','Создать тестовый заказ');
+  await heading('Мои заказы');
 }

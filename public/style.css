@@ -200,3 +200,21 @@ details[open] summary::before {content:'−'}
   details[open]>:not(summary) {animation:appear .17s ease-out}
   @keyframes appear {from {opacity:.7;transform:translateY(3px)} to {opacity:1;transform:translateY(0)}}
 }
+
+[hidden] {display:none!important}
+.category-card {display:block;text-decoration:none}
+.category-card:hover {background:#f2ecdf}
+.category-card:focus-visible {outline-offset:3px}
+.category-card img {width:100%;height:auto;aspect-ratio:1.63}
+.category-card p {font-size:.9375rem;color:var(--muted);margin-bottom:0}
+.category-intro {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:1rem;align-items:center;background:#eee5d7;border-radius:10px;padding:.95rem}
+.category-intro img {width:100%;height:auto;aspect-ratio:1.55;border-radius:7px}
+.category-intro p {margin:.4rem 0 .75rem}
+.category-intro .quiet {padding-inline:0}
+#product-quote:empty {display:none}
+#product-quote:not(:empty) {padding-top:.75rem;border-top:1px solid var(--line)}
+@media(max-width:510px) {
+  .category-intro {grid-template-columns:minmax(0,1fr);gap:.45rem}
+  .category-intro img {max-height:180px}
+  .category-card img {max-height:180px}
+}

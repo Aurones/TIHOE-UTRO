@@ -59,3 +59,47 @@ await request('/storage/v1/object/chat',{method:'DELETE',token:owner,data:{prefi
 await rpc('delete_order',{oid:order},owner,204);
 assert.deepEqual(await rpc('my_orders',{},buyer),[]);
 console.log('Supabase: migration, owner access, order isolation, idempotency, validation, chat, storage and deletion.');
+
+const category_slug='polotentsa';
+const image='./img/category-towels.webp';
+const fixedId=randomUUID(), customId=randomUUID(), hiddenProductId=randomUUID();
+const fixed={id:fixedId,category_slug,name:'Готовое полотенце',material:'Хлопок',image,
+ sizes:['50 × 90'],colors:['Шалфей'],pricing:'fixed',price:1200,hidden:false};
+await request('/rest/v1/products',{method:'POST',token:buyer,data:fixed,expected:403});
+await request('/rest/v1/products',{method:'POST',token:owner,data:fixed,expected:201});
+await request('/rest/v1/products',{method:'POST',token:owner,data:{...fixed,id:customId,pricing:'custom',price:140,fabric_id:id,custom_size:true},expected:201});
+await request('/rest/v1/products',{method:'POST',token:owner,data:{...fixed,id:hiddenProductId,hidden:true},expected:201});
+assert.deepEqual(await request('/rest/v1/products',{token:buyer}),[]);
+const assortment=await rpc('assortment',{},ANON_KEY);
+assert.equal(assortment.categories.length,3);
+assert.equal(assortment.products.find(x=>x.id===fixedId).price,1200);
+const customPublic=assortment.products.find(x=>x.id===customId);
+assert.equal(customPublic.price,null);
+assert.equal(Object.hasOwn(customPublic,'fabric_id'),false);
+assert.ok(!assortment.products.some(x=>x.id===hiddenProductId));
+
+const fixedOrder={...p,product_id:fixedId,nonce:randomUUID(),size:'50 × 90',qty:2,expected_price:2400};
+assert.deepEqual(await rpc('estimate_product',{p:fixedOrder},ANON_KEY),{price:2400,pricing:'fixed'});
+await rpc('estimate_product',{p:{...fixedOrder,size:'60 × 90'}},ANON_KEY,400);
+await rpc('estimate_product',{p:{...fixedOrder,product_id:hiddenProductId}},ANON_KEY,400);
+await rpc('place_product_order',{p:{...fixedOrder,expected_price:1}},buyer,400);
+const ordered=await rpc('place_product_order',{p:fixedOrder},buyer);
+assert.equal(await rpc('place_product_order',{p:fixedOrder},buyer),ordered);
+const customOrder={...fixedOrder,product_id:customId,nonce:randomUUID(),size:'55 × 85'};
+const estimate=await rpc('estimate_product',{p:customOrder},ANON_KEY);
+assert.equal(estimate.pricing,'custom');
+assert.ok(estimate.price>0);
+assert.equal(Object.hasOwn(estimate,'cost'),false);
+await rpc('place_product_order',{p:{...customOrder,expected_price:estimate.price}},buyer);
+const childOrder=await rpc('place_order',{p:{...p,nonce:randomUUID(),category_slug:'detskoe-postelnoe-belie'}},buyer);
+const newOrders=await rpc('my_orders_assortment',{},buyer);
+assert.equal(newOrders.find(x=>x.id===ordered).category_slug,category_slug);
+assert.equal(newOrders.find(x=>x.id===ordered).final_price,2400);
+assert.equal(newOrders.find(x=>x.product_id===customId).final_price,null);
+assert.equal(newOrders.find(x=>x.id===childOrder).category_slug,'detskoe-postelnoe-belie');
+assert.deepEqual(await rpc('my_orders_assortment',{},other),[]);
+await request('/rest/v1/categories?slug=eq.'+category_slug,{method:'PATCH',token:owner,data:{archived:true}});
+assert.ok(!(await rpc('assortment',{},ANON_KEY)).products.some(x=>x.category_slug===category_slug));
+await rpc('estimate_product',{p:fixedOrder},ANON_KEY,400);
+assert.ok((await rpc('my_orders_assortment',{},buyer)).some(x=>x.id===ordered));
+console.log('Assortment: category archives, private catalog costs, fixed and custom pricing, stale price rejection, child orders and access policies.');
