@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {readFile,writeFile} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
+import {setTimeout as delay} from 'node:timers/promises';
 
 const {API_URL,ANON_KEY,SERVICE_ROLE_KEY}=process.env;
 assert.ok(API_URL&&ANON_KEY&&SERVICE_ROLE_KEY,'Use a disposable local Supabase instance.');
@@ -30,7 +31,13 @@ async function account(){
 const [owner,other]=await Promise.all([account(),account()]);
 const sql=(await readFile('supabase/studio/tihoe-utro-1.3.sql','utf8')).replace('replace-owner@example.invalid',owner.email);
 execFileSync('docker',['exec','-i','supabase_db_tihoe-utro','psql','-q','-v','ON_ERROR_STOP=1','-U','postgres','-d','postgres'],{input:sql});
-assert.equal(await rpc('storefront_is_owner',{},owner.token),true);
+let roleStatus;
+for(let attempt=0;attempt<30;attempt++){
+ roleStatus=await rpc('storefront_is_owner',{},owner.token,[200,404]);
+ if(roleStatus?.code!=='PGRST202')break;
+ await delay(200);
+}
+assert.equal(roleStatus,true,'Owner RPC must be visible after the schema reload');
 assert.equal(await rpc('storefront_is_owner',{},other.token),false);
 await rpc('storefront_draft',{},null,[401,403]);
 await rpc('storefront_draft',{},other.token,403);
