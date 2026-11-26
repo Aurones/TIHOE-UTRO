@@ -79,7 +79,7 @@ function cards(list,full=false){
   return '<div class="grid">'+list.map(f=>'<article class="card media"><button type="button" class="image-btn" data-photo="'+esc(f.id)+'" aria-label="Увеличить фото '+esc(f.name)+'"><img src="'+esc(photo(f))+'" alt="'+esc(f.name)+'" loading="lazy"></button><div class="card-body stack"><h3>'+esc(f.name)+'</h3><p class="muted">'+esc(f.composition)+'</p>'+(full?'<p>'+esc(f.description)+'</p><p>Расцветки: '+esc(f.colors.join(', '))+'</p><p>Ширина рулона: '+f.width+' см</p>':'')+'<p><span class="tag">'+(f.available?'В наличии':'Нет в наличии')+'</span></p>'+(full&&f.available?'<button class="primary" data-choose="'+esc(f.id)+'">Выбрать ткань</button>':'')+'</div></article>').join('')+'</div>';
 }
 function home(){
-  return '<div class="wrap"><section class="hero"><img class="hero-image" src="./img/hero.webp" alt="Постельное бельё шалфейного цвета в мягком утреннем свете" width="1200" height="800" fetchpriority="high"><div class="hero-copy"><p class="eyebrow">Семейная мастерская</p><h1>Уют, сшитый специально для вас</h1><p class="hero-description">Постельное бельё по вашим размерам. Выберите ткань, а мы сошьём комплект для вашего дома.</p>'+actions(href('#/build','Собрать свой комплект','primary')+href('#/fabrics','Посмотреть ткани','quiet'))+'</div></section><ul class="features"><li>'+icon('leaf')+'Натуральные ткани</li><li>'+icon('ruler')+'Пошив по вашим размерам</li><li>'+icon('heart')+'Ручная работа</li></ul><section class="section"><div class="section-top"><h2>Ткани для вашего дома</h2>'+href('#/fabrics','Все ткани','quiet')+'</div>'+cards(fabrics.slice(0,3))+'</section></div>';
+  return '<div class="wrap"><section class="hero"><img class="hero-image" src="./img/hero.webp" alt="Постельное бельё шалфейного цвета в мягком утреннем свете" width="1200" height="800" fetchpriority="high"><div class="hero-copy"><p class="eyebrow">Семейная мастерская</p><h1>Уют, сшитый специально для вас</h1><p class="hero-description">Шьём постельное бельё по вашим размерам и из выбранной вами ткани.</p>'+actions(href('#/build','Собрать свой комплект','primary')+href('#/fabrics','Посмотреть ткани','quiet'))+'</div></section><ul class="features"><li>'+icon('leaf')+'Натуральные ткани</li><li>'+icon('ruler')+'Пошив по вашим размерам</li><li>'+icon('heart')+'Ручная работа</li></ul><section class="section"><div class="section-top"><h2>Ткани для вашего дома</h2>'+href('#/fabrics','Все ткани','quiet')+'</div>'+cards(fabrics.slice(0,3))+'</section></div>';
 }
 function catalog(){return '<section class="wrap page stack"><h1>Ткани</h1><form id="filters" class="row three">'+field('Поиск по названию или цвету','q','','','search')+select('Материал','material',['Все материалы',...new Set(fabrics.map(f=>f.material))])+check('Только в наличии','stock')+'</form><div id="catalog-results">'+cards(fabrics,true)+'</div></section>';}
 function applyFilters(form){const {q,material,stock}=Object.fromEntries(new FormData(form));$('#catalog-results').innerHTML=cards(fabrics.filter(f=>(material==='Все материалы'||f.material===material)&&(!stock||f.available)&&[f.name,f.material,...f.colors].join(' ').toLowerCase().includes(q.trim().toLowerCase())),true);}
@@ -158,7 +158,13 @@ function ownerNav(){
  });
  return '<nav class="owner-nav" aria-label="Разделы кабинета">'+links.join('')+'<button class="quiet" data-logout>Выйти</button></nav>';
 }
-const ownerPage=(title,body)=>'<section class="wrap page stack owner-page">'+ownerNav()+'<h1>'+title+'</h1>'+body+'</section>';
+function ownerPage(title,body){
+ const heading='<h1>'+title+'</h1>';
+ const intro=route.split('/')[1]
+   ?ownerNav()+heading
+   :'<div class="owner-intro">'+heading+'<button class="quiet" data-logout>Выйти</button></div>';
+ return '<section class="wrap page stack owner-page">'+intro+body+'</section>';
+}
 const allOrders=()=>demo?Promise.resolve(demoOrders()):table('orders','?order=created_at.desc&limit=5000');
 const allFabrics=()=>demo?Promise.resolve(load('qu-demo-fabrics',sample)):table('fabrics','?order=name');
 function login(){return panel('Кабинет владельца',demo?'<div class="panel stack"><p>В демонстрационном кабинете можно управлять тестовыми заказами и тканями в этом браузере.</p><button class="primary" data-demo-owner>Открыть демонстрационный кабинет</button></div>':'<form id="login" class="panel stack">'+field('Электронная почта','email','','required autocomplete="username"','email')+field('Пароль','password','','required autocomplete="current-password"','password')+error+'<button class="primary">Войти</button></form>');}

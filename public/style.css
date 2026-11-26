@@ -121,6 +121,9 @@ details[open] summary::before {content:'−'}
 .admin-image {width:100%;aspect-ratio:1.65}
 
 .owner-page {max-width:1060px}
+.owner-intro {display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.owner-intro h1 {margin:0}
+.owner-intro button {flex:none;font-size:.875rem}
 .owner-nav {display:flex;align-items:center;flex-wrap:wrap;gap:0 1rem;border-bottom:1px solid var(--line)}
 .owner-nav a,.owner-nav button {font-size:.875rem}
 .owner-nav button {margin-inline-start:auto}
@@ -187,6 +190,8 @@ details[open] summary::before {content:'−'}
 }
 @media(max-width:365px) {
   .section-top {align-items:start;flex-direction:column}
+  .owner-tile {flex-direction:column}
+  .owner-tile h2 {font-size:1.0625rem}
 }
 @media(prefers-reduced-motion:no-preference) {
   a,button {transition:background-color .16s,color .16s,border-color .16s}
